@@ -1,0 +1,32 @@
+{
+  "worldWidth": 50,
+  "rocketRadius": 1.6,
+  "speedK": 40,
+  "referenceThrustToMass": 0.8,
+  "accelFactor": 0.9,
+  "cruiseThrottle": 0.7,
+  "reverseThrottle": -0.3,
+  "burnBase": 1.0,
+  "burnReferenceThrust": 40,
+  "glideDecel": 8,
+  "lateralBase": 10,
+  "lateralPerManeuverability": 0.5,
+  "referenceMass": 50,
+  "turbo": { "duration": 1.2, "speedBonus": 0.6, "fuelCost": 0.03, "cooldown": 2.5 },
+  "hoop": { "speedBonus": 0.35, "duration": 2.5, "halfWidth": 4.5 },
+  "weapon": { "ammo": 12, "cooldown": 0.35, "projectileSpeed": 90, "projectileLife": 1.2 },
+  "invulnerability": 0.6,
+  "chunkSize": 100,
+  "firstChunkY": 120,
+  "lookahead": 220,
+  "despawnBelow": 60,
+  "tutorialDensityFactor": 0.35,
+  "obstacleScalePerLevel": 0.15,
+  "obstacles": {
+    "asteroid": { "radius": [3, 5], "damage": 25, "hp": 30, "drift": 2, "wobble": 0 },
+    "debris": { "radius": [1.5, 2.5], "damage": 12, "hp": 10, "drift": 8, "wobble": 0 },
+    "satellite": { "radius": [3, 3.5], "damage": 30, "hp": 40, "drift": 12, "wobble": 0 },
+    "mine": { "radius": [1.8, 2.2], "damage": 40, "hp": 15, "drift": 0, "wobble": 0 },
+    "ufo": { "radius": [3, 3.5], "damage": 35, "hp": 50, "drift": 4, "wobble": 10 }
+  }
+}

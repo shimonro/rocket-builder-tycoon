@@ -1,0 +1,13 @@
+{
+  "startingCash": 600,
+  "rankingBonusPerPoint": 0.002,
+  "maxRankingBonus": 0.5,
+  "softCapTargetMultiple": 3,
+  "diminishingReturns": [
+    { "fromTargetMultiple": 1, "rate": 0.5 },
+    { "fromTargetMultiple": 2, "rate": 0.25 }
+  ],
+  "repeatCompletionBonusFactor": 0.25,
+  "sellBackFactor": 0.5,
+  "shieldsAndWeaponsFromLevel": 2
+}

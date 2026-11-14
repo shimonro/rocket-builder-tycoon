@@ -1,0 +1,21 @@
+import { parseCatalog, parsePrebuilts } from '../core/parts/parts';
+import type { RankingWeights } from '../core/rocket/rocket';
+import type { JourneyConfig } from '../engines/journey/config';
+import type { EconomyConfig } from '../engines/levels/economy';
+import { parseLevels } from '../engines/levels/levels';
+import type { TutorialScript } from '../engines/tutorial/tutorial';
+import catalogJson from './parts/catalog.json';
+import prebuiltsJson from './parts/prebuilts.json';
+import levelsJson from './levels/levels.json';
+import rankingJson from './config/ranking.json';
+import economyJson from './config/economy.json';
+import journeyJson from './config/journey.json';
+import tutorialJson from './config/tutorial.json';
+
+export const catalog = parseCatalog(catalogJson);
+export const prebuilts = parsePrebuilts(prebuiltsJson, catalog);
+export const levels = parseLevels(levelsJson);
+export const rankingWeights: RankingWeights = rankingJson;
+export const economy: EconomyConfig = economyJson;
+export const journeyConfig: JourneyConfig = journeyJson;
+export const tutorialScript: TutorialScript = tutorialJson;

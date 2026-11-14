@@ -1,0 +1,9 @@
+{
+  "thrust": 1.5,
+  "fuelCapacity": 1.2,
+  "fuelEfficiency": 1.2,
+  "maneuverability": 1.0,
+  "hull": 0.5,
+  "shield": 0.8,
+  "weaponDamage": 0.8
+}

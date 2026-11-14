@@ -1,0 +1,6 @@
+services:
+  game:
+    command: npm run build && npx vite preview --host 0.0.0.0 --port "$PORT" --strictPort
+    portal:
+      title: Rocket Builder Tycoon
+      description: Production build of the game. Progress saves in your browser.

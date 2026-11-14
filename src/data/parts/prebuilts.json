@@ -1,0 +1,79 @@
+[
+  {
+    "id": "skylark",
+    "name": "Skylark",
+    "description": "A tuned starter rocket. Light, nimble and ready to fly.",
+    "price": 1250,
+    "levelRequired": 1,
+    "parts": [
+      "pb_skylark_body",
+      "pb_skylark_fuel_tank",
+      "pb_skylark_engine",
+      "pb_skylark_fins"
+    ]
+  },
+  {
+    "id": "comet",
+    "name": "Comet",
+    "description": "Fully equipped with booster, shield and blaster.",
+    "price": 9500,
+    "levelRequired": 3,
+    "parts": [
+      "pb_comet_body",
+      "pb_comet_fuel_tank",
+      "pb_comet_engine",
+      "pb_comet_booster",
+      "pb_comet_fins",
+      "pb_comet_shield",
+      "pb_comet_weapon"
+    ]
+  },
+  {
+    "id": "nova",
+    "name": "Nova",
+    "description": "Epic-grade racer tuned for deep-space runs.",
+    "price": 33000,
+    "levelRequired": 5,
+    "parts": [
+      "pb_nova_body",
+      "pb_nova_fuel_tank",
+      "pb_nova_engine",
+      "pb_nova_booster",
+      "pb_nova_fins",
+      "pb_nova_shield",
+      "pb_nova_weapon"
+    ]
+  },
+  {
+    "id": "pulsar",
+    "name": "Pulsar",
+    "description": "Legendary components, factory-balanced.",
+    "price": 120000,
+    "levelRequired": 7,
+    "parts": [
+      "pb_pulsar_body",
+      "pb_pulsar_fuel_tank",
+      "pb_pulsar_engine",
+      "pb_pulsar_booster",
+      "pb_pulsar_fins",
+      "pb_pulsar_shield",
+      "pb_pulsar_weapon"
+    ]
+  },
+  {
+    "id": "odyssey",
+    "name": "Odyssey",
+    "description": "The pinnacle of rocketry. Built to go the distance.",
+    "price": 260000,
+    "levelRequired": 9,
+    "parts": [
+      "pb_odyssey_body",
+      "pb_odyssey_fuel_tank",
+      "pb_odyssey_engine",
+      "pb_odyssey_booster",
+      "pb_odyssey_fins",
+      "pb_odyssey_shield",
+      "pb_odyssey_weapon"
+    ]
+  }
+]
