@@ -81,7 +81,7 @@ Vercel's Hobby plan is for non-commercial projects; move to Pro before adding ad
 
 ## Development workflow
 
-`main` is protected: changes land through a pull request whose CI check (lint, typecheck, coverage, build, e2e) passes. Work on `dev` (or a feature branch), open a PR to `main`, and Vercel deploys after the merge. Every PR also gets a Vercel preview URL.
+Work on `dev` (or a feature branch) and open a pull request to `main`; the CI check (lint, typecheck, coverage, build, e2e) runs on it and Vercel posts a preview URL. Merging deploys production. To enforce this, protect `main` in GitHub (Settings → Branches → Add rule: require a pull request and the `check` status).
 
 ## Design interpretations
 
