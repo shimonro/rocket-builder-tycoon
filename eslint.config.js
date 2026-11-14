@@ -3,7 +3,7 @@ import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
-const ENGINES = ['builder', 'journey', 'levels', 'shop', 'tutorial'];
+const ENGINES = ['builder', 'journey', 'levels', 'progression', 'shop', 'tutorial'];
 
 export default tseslint.config(
   { ignores: ['dist', 'coverage', 'playwright-report', 'test-results'] },

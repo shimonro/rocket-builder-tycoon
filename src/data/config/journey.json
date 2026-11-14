@@ -21,12 +21,19 @@
   "lookahead": 220,
   "despawnBelow": 60,
   "tutorialDensityFactor": 0.35,
-  "obstacleScalePerLevel": 0.15,
+  "obstacleScalePerLevel": 0.12,
+  "coins": { "rowsPer100m": 0.6, "rowSize": 5, "spacing": 3.2, "radius": 1.2 },
+  "fuelCan": { "chance": 0.12, "refill": 0.2, "radius": 1.5 },
+  "wind": { "fromLevel": 3, "chance": 0.2, "force": [6, 12], "height": [40, 90] },
+  "meteorShower": { "fromLevel": 4, "chance": 0.15, "count": 7, "speed": [10, 18] },
+  "guardian": { "fromLevel": 2, "coinReward": 15, "offset": 10 },
   "obstacles": {
     "asteroid": { "radius": [3, 5], "damage": 25, "hp": 30, "drift": 2, "wobble": 0 },
     "debris": { "radius": [1.5, 2.5], "damage": 12, "hp": 10, "drift": 8, "wobble": 0 },
     "satellite": { "radius": [3, 3.5], "damage": 30, "hp": 40, "drift": 12, "wobble": 0 },
     "mine": { "radius": [1.8, 2.2], "damage": 40, "hp": 15, "drift": 0, "wobble": 0 },
-    "ufo": { "radius": [3, 3.5], "damage": 35, "hp": 50, "drift": 4, "wobble": 10 }
+    "ufo": { "radius": [3, 3.5], "damage": 35, "hp": 50, "drift": 4, "wobble": 10 },
+    "meteor": { "radius": [1.1, 1.7], "damage": 15, "hp": 8, "drift": 3, "wobble": 0 },
+    "guardian": { "radius": [6, 6], "damage": 45, "hp": 120, "drift": 9, "wobble": 0 }
   }
 }

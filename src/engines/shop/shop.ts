@@ -1,4 +1,4 @@
-import { RARITIES, type Catalog, type Category, type Part, type Prebuilt, type Rarity } from '../../core/parts/parts';
+import { MAX_UPGRADE, RARITIES, type Catalog, type Category, type Part, type Prebuilt, type Rarity } from '../../core/parts/parts';
 
 export type Inventory = Record<string, number>;
 
@@ -14,7 +14,14 @@ export interface ShopAccess {
   shieldsAndWeaponsUnlocked: boolean;
 }
 
-export type ShopError = 'unknown_item' | 'insufficient_funds' | 'level_locked' | 'category_locked' | 'prebuilt_only' | 'not_owned';
+export type ShopError =
+  | 'unknown_item'
+  | 'insufficient_funds'
+  | 'level_locked'
+  | 'category_locked'
+  | 'prebuilt_only'
+  | 'not_owned'
+  | 'max_upgrade';
 
 export type ShopResult = { ok: true; wallet: Wallet } | { ok: false; error: ShopError };
 
@@ -67,6 +74,31 @@ export function sellPart(wallet: Wallet, partId: string, catalog: Catalog, sellB
   if (owned === 1) delete inventory[partId];
   else inventory[partId] = owned - 1;
   return { ok: true, wallet: { cash: wallet.cash + sellPrice(part, sellBackFactor), inventory } };
+}
+
+/** Price of the next upgrade level: the part's price × factor × (current level + 1). Null at the cap. */
+export function upgradeCost(part: Part, current: number, factor: number): number | null {
+  return current >= MAX_UPGRADE ? null : Math.round(part.price * factor * (current + 1));
+}
+
+export type UpgradeResult = { ok: true; cash: number; upgrades: Record<string, number> } | { ok: false; error: ShopError };
+
+/** Raises an owned part (spare or mounted) one upgrade level. Upgrades apply to every copy of that part. */
+export function upgradePart(
+  state: { cash: number; upgrades: Record<string, number> },
+  partId: string,
+  owned: boolean,
+  catalog: Catalog,
+  factor: number,
+): UpgradeResult {
+  const part = catalog.get(partId);
+  if (!part) return { ok: false, error: 'unknown_item' };
+  if (!owned) return { ok: false, error: 'not_owned' };
+  const current = state.upgrades[partId] ?? 0;
+  const cost = upgradeCost(part, current, factor);
+  if (cost === null) return { ok: false, error: 'max_upgrade' };
+  if (state.cash < cost) return { ok: false, error: 'insufficient_funds' };
+  return { ok: true, cash: state.cash - cost, upgrades: { ...state.upgrades, [partId]: current + 1 } };
 }
 
 export interface ShopFilter {

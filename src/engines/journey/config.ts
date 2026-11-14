@@ -35,6 +35,14 @@ export interface JourneyConfig {
   despawnBelow: number;
   tutorialDensityFactor: number;
   obstacleScalePerLevel: number;
+  coins: { rowsPer100m: number; rowSize: number; spacing: number; radius: number };
+  /** Refill is a share of the tank's capacity. */
+  fuelCan: { chance: number; refill: number; radius: number };
+  /** Wind bands push the rocket sideways by `force` m/s while it is inside them. */
+  wind: { fromLevel: number; chance: number; force: number[]; height: number[] };
+  meteorShower: { fromLevel: number; chance: number; count: number; speed: number[] };
+  /** A boss obstacle guarding the finish line; destroying it pays coinReward coins. */
+  guardian: { fromLevel: number; coinReward: number; offset: number };
   obstacles: Record<string, ObstacleDef>;
 }
 

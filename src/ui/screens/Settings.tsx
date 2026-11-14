@@ -41,7 +41,47 @@ export function Settings() {
           />
         </label>
         <label className="row">
-          <input type="checkbox" checked={settings.muted} onChange={(e) => update({ muted: e.target.checked })} /> Mute
+          Music
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={settings.music}
+            onChange={(e) => update({ music: Number(e.target.value) })}
+            aria-label="Music volume"
+          />
+        </label>
+        <label className="row">
+          <input type="checkbox" checked={settings.muted} onChange={(e) => update({ muted: e.target.checked })} /> Mute everything
+        </label>
+        {'vibrate' in navigator && (
+          <label className="row">
+            <input type="checkbox" checked={settings.vibration} onChange={(e) => update({ vibration: e.target.checked })} /> Vibrate on hits
+          </label>
+        )}
+      </section>
+
+      <section className="card">
+        <h2>Gameplay</h2>
+        <label className="row">
+          <input type="checkbox" checked={settings.ghost} onChange={(e) => update({ ghost: e.target.checked })} /> Show the ghost of my best run
+        </label>
+        <label className="row">
+          Pilot name (leaderboards)
+          <input
+            type="text"
+            maxLength={16}
+            placeholder="Auto"
+            value={settings.pilotName}
+            onChange={(e) => update({ pilotName: e.target.value.replace(/[^\p{L}\p{N} _-]/gu, '') })}
+            aria-label="Pilot name"
+            data-testid="pilot-name"
+          />
+        </label>
+        <label className="row">
+          <input type="checkbox" checked={settings.analytics} onChange={(e) => update({ analytics: e.target.checked })} /> Share anonymous gameplay
+          stats and crash reports
         </label>
       </section>
 

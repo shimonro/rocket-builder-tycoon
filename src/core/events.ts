@@ -13,6 +13,12 @@ export type GameEvent =
   | { type: 'targetReached' }
   | { type: 'flightEnded'; reason: string }
   | { type: 'payout'; amount: number }
+  | { type: 'upgrade'; partId: string }
+  | { type: 'coin' }
+  | { type: 'fuelCan' }
+  | { type: 'meteorShower' }
+  | { type: 'guardianDefeated' }
+  | { type: 'flightFinished'; levelId: number; distance: number; reason: string; targetReached: boolean }
   | { type: 'error'; message: string };
 
 export type Listener<E> = (event: E) => void;

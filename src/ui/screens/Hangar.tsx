@@ -1,24 +1,54 @@
-import { STAT_KEYS, type Category } from '../../core/parts/parts';
+import { MAX_UPGRADE, STAT_KEYS, type Category, type Part } from '../../core/parts/parts';
 import { missingSlots, rocketParts, rocketStats, SLOTS } from '../../core/rocket/rocket';
-import { catalog, economy, journeyConfig } from '../../data';
+import { catalog, cosmetics, economy, journeyConfig } from '../../data';
 import { hangarState } from '../../engines/builder/builder';
 import { deriveFlightStats } from '../../engines/journey/config';
-import { sellPrice } from '../../engines/shop/shop';
+import { sellPrice, upgradeCost } from '../../engines/shop/shop';
 import { useGame } from '../../state/game';
 import { levelById, rankingWith, rocketRanking, tutorialDone } from '../../state/selectors';
 import { rocketLook, rocketSvg } from '../art/rocketArt';
 import { CATEGORY_LABELS, GateButton, money, PartIcon, RarityTag, STAT_LABELS, Svg } from '../components/common';
 
+function UpgradeButton({ part }: { part: Part }) {
+  const save = useGame((s) => s.save);
+  const upgrade = useGame((s) => s.upgradePart);
+  const level = save.upgrades[part.id] ?? 0;
+  const cost = upgradeCost(part, level, economy.upgradeCostFactor);
+  return (
+    <GateButton
+      action={`upgrade:${part.id}`}
+      onClick={() => upgrade(part.id)}
+      disabled={cost === null || save.cash < cost}
+      className="small ghost upgrade"
+      title="Each upgrade adds 10% to all of this part's stats"
+      testId={`upgrade-${part.id}`}
+    >
+      {cost === null ? 'Max ⬆' : `⬆ ${money(cost)}`}
+    </GateButton>
+  );
+}
+
+function UpgradeLevel({ level }: { level: number }) {
+  if (level === 0) return null;
+  return (
+    <span className="upgrade-level" title={`Upgraded +${level * 10}%`}>
+      {'▲'.repeat(level)}
+      {'△'.repeat(MAX_UPGRADE - level)}
+    </span>
+  );
+}
+
 export function Hangar() {
   const save = useGame((s) => s.save);
   const { equip, unequip, sellPart, launch, navigate } = useGame.getState();
   const parts = rocketParts(save.rocket, catalog);
-  const stats = rocketStats(parts);
+  const stats = rocketStats(parts, save.upgrades);
+  const paint = cosmetics.find((c) => c.id === save.cosmetics.equipped.paint)?.color;
   const flight = deriveFlightStats(stats, journeyConfig, true);
   const state = hangarState(save.rocket);
   const missing = missingSlots(save.rocket);
   const level = levelById(save.selectedLevel);
-  const ranking = rocketRanking(save.rocket);
+  const ranking = rocketRanking(save.rocket, save.upgrades);
   const owned = Object.entries(save.inventory)
     .map(([id, count]) => ({ part: catalog.get(id)!, count }))
     .filter((x) => x.part)
@@ -28,7 +58,7 @@ export function Hangar() {
     <div className="screen hangar">
       <section className="card rocket-card">
         <h2>Your Rocket</h2>
-        <Svg svg={rocketSvg(rocketLook(save.rocket, catalog), true)} className="rocket-preview" label="Rocket preview" />
+        <Svg svg={rocketSvg({ ...rocketLook(save.rocket, catalog), paint }, true)} className="rocket-preview" label="Rocket preview" />
         <div className="ranking-big" data-testid="hangar-ranking">
           <span>Ranking</span>
           <strong>★ {ranking}</strong>
@@ -71,8 +101,9 @@ export function Hangar() {
                   <>
                     <PartIcon part={part} size={36} />
                     <span className="slot-part">
-                      {part.name} <RarityTag rarity={part.rarity} />
+                      {part.name} <RarityTag rarity={part.rarity} /> <UpgradeLevel level={save.upgrades[part.id] ?? 0} />
                     </span>
+                    {tutorialDone(save) && <UpgradeButton part={part} />}
                     <GateButton action={`unequip:${category}`} onClick={() => unequip(category as Category)} className="small ghost">
                       Remove
                     </GateButton>
@@ -100,12 +131,12 @@ export function Hangar() {
         ) : (
           <ul className="inventory">
             {owned.map(({ part, count }) => {
-              const delta = rankingWith(save.rocket, part) - ranking;
+              const delta = rankingWith(save.rocket, part, save.upgrades) - ranking;
               return (
                 <li key={part.id} className="inv-item" data-testid={`inv-${part.id}`}>
                   <PartIcon part={part} size={36} />
                   <span className="inv-name">
-                    {part.name} {count > 1 && <b>×{count}</b>}
+                    {part.name} {count > 1 && <b>×{count}</b>} <UpgradeLevel level={save.upgrades[part.id] ?? 0} />
                     <small>
                       {CATEGORY_LABELS[part.category]} · <RarityTag rarity={part.rarity} />
                       <span className={delta >= 0 ? 'delta up' : 'delta down'}>

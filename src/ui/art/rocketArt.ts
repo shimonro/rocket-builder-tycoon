@@ -9,8 +9,8 @@ export const RARITY_COLORS: Record<Rarity, string> = {
   legendary: '#fbbf24',
 };
 
-/** Accent color per equipped slot. */
-export type RocketLook = Partial<Record<Category, string>>;
+/** Accent color per equipped slot, plus an optional cosmetic hull paint. */
+export type RocketLook = Partial<Record<Category, string>> & { paint?: string };
 
 export function rocketLook(rocket: Rocket, catalog: Catalog): RocketLook {
   const look: RocketLook = {};
@@ -54,7 +54,7 @@ export function rocketSvg(look: RocketLook, ghost = false): string {
     );
   }
   parts.push(
-    g(!!look.body, `<path d="M50 8 C62 20 68 34 68 52 L68 118 L32 118 L32 52 C32 34 38 20 50 8 Z" fill="#e8edf5" ${OUTLINE}/>`),
+    g(!!look.body, `<path d="M50 8 C62 20 68 34 68 52 L68 118 L32 118 L32 52 C32 34 38 20 50 8 Z" fill="${look.paint ?? '#e8edf5'}" ${OUTLINE}/>`),
     g(!!look.body, `<path d="M50 8 C58 16 62 24 64 32 L36 32 C38 24 42 16 50 8 Z" fill="${look.body ?? ''}"/>`),
     g(!!look.fuel_tank, `<rect x="32" y="76" width="36" height="30" fill="${look.fuel_tank ?? ''}" ${OUTLINE}/>`),
     g(!!look.fuel_tank, `<rect x="32" y="86" width="36" height="4" fill="#0f172a" opacity="0.35"/>`),

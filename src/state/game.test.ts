@@ -63,6 +63,9 @@ describe('game flow: purchase → assemble → launch → payout', () => {
       endReason: flight.endReason ?? 'aborted',
       hoops: flight.hoopsCollected,
       destroyed: flight.obstaclesDestroyed,
+      coins: flight.coins,
+      fuelCans: flight.fuelCans,
+      guardianDefeated: flight.guardianDefeated,
     });
 
     const { save, lastResult, screen } = game();
@@ -70,6 +73,9 @@ describe('game flow: purchase → assemble → launch → payout', () => {
     expect(lastResult?.firstCompletion).toBe(true);
     expect(lastResult?.payout.completionBonus).toBe(levels[0].completionBonus);
     expect(save.cash).toBe(lastResult?.payout.total);
+    expect(lastResult?.achievements.map((a) => a.id)).toContain('first_flight');
+    expect(save.gems).toBeGreaterThanOrEqual(5);
+    expect(save.missions).toBeNull();
     expect(save.progress.completed).toEqual([1]);
 
     game().continueFromResults('retry');
@@ -95,5 +101,51 @@ describe('game flow: purchase → assemble → launch → payout', () => {
     // Shields and weapons open up with level 2.
     game().buyPart('shield_bubble_shield');
     expect(game().save.inventory).toHaveProperty('shield_bubble_shield', 1);
+  });
+
+  it('upgrades parts for ranking, sells cosmetics for gems and pays missions once', () => {
+    const game = () => useGame.getState();
+    const rocket = { body: STARTER[0], fuel_tank: STARTER[1], engine: STARTER[2], fins: STARTER[3] };
+    game().loadSave({ ...defaultSave(economy.startingCash), tutorialStep: 'done', cash: 1000, rocket, gems: 20 });
+    expect(game().save.missions?.list).toHaveLength(3);
+
+    // The $200 engine's first upgrade costs $100 and adds 10% thrust: 60 → 66 ranking points from thrust.
+    const before = game().save;
+    game().upgradePart('engine_sparrow_e1');
+    expect(game().save.cash).toBe(900);
+    expect(game().save.upgrades).toEqual({ engine_sparrow_e1: 1 });
+    game().upgradePart('booster_bottle_rocket'); // not owned
+    expect(game().notice).toMatch(/do not own/);
+    expect(game().save.cash).toBe(900);
+    expect(before.upgrades).toEqual({});
+
+    game().buyCosmetic('paint_gold'); // 60 gems
+    expect(game().save.cosmetics.owned).toEqual([]);
+    game().buyCosmetic('paint_crimson');
+    expect(game().save).toMatchObject({ gems: 5, cosmetics: { owned: ['paint_crimson'], equipped: { paint: 'paint_crimson' } } });
+    game().equipCosmetic('paint', null);
+    expect(game().save.cosmetics.equipped).toEqual({});
+    game().equipCosmetic('flame', 'flame_ice'); // not owned
+    expect(game().save.cosmetics.equipped).toEqual({});
+
+    const mission = game().save.missions!.list[0];
+    game().claimMission(mission.id); // not done yet
+    expect(game().save.gems).toBe(5);
+    useGame.setState({ save: { ...game().save, missions: { ...game().save.missions!, list: game().save.missions!.list.map((m) => ({ ...m, progress: m.target })) } } });
+    game().claimMission(mission.id);
+    game().claimMission(mission.id);
+    expect(game().save.gems).toBe(5 + mission.gems);
+  });
+
+  it('lets returning players skip the tutorial and remembers dismissed tips', () => {
+    const game = () => useGame.getState();
+    game().skipTutorial();
+    expect(game().save).toMatchObject({ tutorialStep: 'done', cash: economy.startingCash });
+    expect(game().screen).toBe('shop');
+    game().buyPart('engine_sparrow_e1');
+    expect(game().save.inventory).toEqual({ engine_sparrow_e1: 1 });
+    game().markTip('missions');
+    game().markTip('missions');
+    expect(game().save.tips).toEqual(['missions']);
   });
 });

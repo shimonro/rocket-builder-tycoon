@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CATEGORIES, parseCatalog, parsePrebuilts } from '../../core/parts/parts';
 import catalogJson from '../../data/parts/catalog.json';
 import prebuiltsJson from '../../data/parts/prebuilts.json';
-import { buyPart, buyPrebuilt, listParts, partLock, sellPart, sellPrice, type ShopAccess } from './shop';
+import { buyPart, buyPrebuilt, listParts, partLock, sellPart, sellPrice, upgradeCost, upgradePart, type ShopAccess } from './shop';
 
 const catalog = parseCatalog(catalogJson);
 const prebuilts = parsePrebuilts(prebuiltsJson, catalog);
@@ -65,6 +65,33 @@ describe('sellPart', () => {
   it('cannot sell what is not owned', () => {
     expect(sellPart(wallet, 'engine_sparrow_e1', catalog, 0.5)).toEqual({ ok: false, error: 'not_owned' });
     expect(sellPart(wallet, 'zzz', catalog, 0.5)).toEqual({ ok: false, error: 'unknown_item' });
+  });
+});
+
+describe('upgradePart', () => {
+  const engine = catalog.get('engine_sparrow_e1')!; // $200
+
+  it('costs price × factor × next level and stops at the cap', () => {
+    expect([0, 1, 2, 3].map((n) => upgradeCost(engine, n, 0.5))).toEqual([100, 200, 300, null]);
+  });
+
+  it('upgrades owned parts one level at a time', () => {
+    let state = { cash: 600, upgrades: {} as Record<string, number> };
+    for (const expected of [500, 300, 0]) {
+      const r = upgradePart(state, engine.id, true, catalog, 0.5);
+      if (!r.ok) throw new Error(r.error);
+      expect(r.cash).toBe(expected);
+      state = r;
+    }
+    expect(state.upgrades).toEqual({ [engine.id]: 3 });
+    expect(upgradePart({ ...state, cash: 9999 }, engine.id, true, catalog, 0.5)).toEqual({ ok: false, error: 'max_upgrade' });
+  });
+
+  it('refuses unknown, unowned and unaffordable upgrades', () => {
+    const state = { cash: 99, upgrades: {} };
+    expect(upgradePart(state, 'nope', true, catalog, 0.5)).toEqual({ ok: false, error: 'unknown_item' });
+    expect(upgradePart({ ...state, cash: 999 }, engine.id, false, catalog, 0.5)).toEqual({ ok: false, error: 'not_owned' });
+    expect(upgradePart(state, engine.id, true, catalog, 0.5)).toEqual({ ok: false, error: 'insufficient_funds' });
   });
 });
 

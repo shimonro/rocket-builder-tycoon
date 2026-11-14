@@ -1,0 +1,12 @@
+[
+  { "id": "paint_crimson", "type": "paint", "name": "Crimson Hull", "price": 15, "color": "#ef4444" },
+  { "id": "paint_midnight", "type": "paint", "name": "Midnight Hull", "price": 15, "color": "#334155" },
+  { "id": "paint_mint", "type": "paint", "name": "Mint Hull", "price": 20, "color": "#6ee7b7" },
+  { "id": "paint_gold", "type": "paint", "name": "Gold Leaf", "price": 60, "color": "#fbbf24" },
+  { "id": "flame_plasma", "type": "flame", "name": "Plasma Flame", "price": 20, "color": "#a855f7" },
+  { "id": "flame_emerald", "type": "flame", "name": "Emerald Flame", "price": 20, "color": "#22c55e" },
+  { "id": "flame_ice", "type": "flame", "name": "Ice Flame", "price": 30, "color": "#67e8f9" },
+  { "id": "trail_rainbow", "type": "trail", "name": "Rainbow Trail", "price": 50, "color": "rainbow" },
+  { "id": "trail_stardust", "type": "trail", "name": "Stardust Trail", "price": 30, "color": "#fde68a" },
+  { "id": "trail_pink", "type": "trail", "name": "Bubblegum Trail", "price": 25, "color": "#f472b6" }
+]

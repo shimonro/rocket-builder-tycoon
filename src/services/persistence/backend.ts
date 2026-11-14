@@ -2,8 +2,30 @@ import { hasProgress, parseSave, type SaveData } from './save';
 
 export interface SaveBackend {
   load(): Promise<SaveData | null>;
-  save(data: SaveData): Promise<void>;
+  /**
+   * `base` is the updatedAt of the copy this device last loaded or wrote (null: no copy yet). When the stored
+   * copy changed since, for example on another device, the save fails with SaveConflictError instead of
+   * overwriting it. Omit `base` to overwrite unconditionally.
+   */
+  save(data: SaveData, base?: number | null): Promise<void>;
   clear(): Promise<void>;
+}
+
+export class SaveConflictError extends Error {
+  constructor(readonly remote: SaveData) {
+    super('Your progress changed on another device.');
+  }
+}
+
+export type SyncDecision = 'in-sync' | 'adopt-remote' | 'conflict';
+
+/**
+ * Compares the stored copy with what this device last synced (`base`):
+ * unchanged → in sync; changed elsewhere while this device has no unsaved changes → adopt it; both changed → conflict.
+ */
+export function decideSync(localUpdatedAt: number, base: number | null, remote: SaveData | null): SyncDecision {
+  if (!remote || remote.updatedAt === base) return 'in-sync';
+  return localUpdatedAt === base ? 'adopt-remote' : 'conflict';
 }
 
 export const GUEST_SAVE_KEY = 'rocket-builder-tycoon.save.v1';
