@@ -25,13 +25,16 @@ export function rocketParts(rocket: Rocket, catalog: Catalog): Part[] {
   });
 }
 
-/** Sums rarity-adjusted stats over the given parts. */
-export function rocketStats(parts: readonly Part[]): RocketStats {
+/** Upgrade level per part id. */
+export type Upgrades = Readonly<Record<string, number>>;
+
+/** Sums rarity- and upgrade-adjusted stats over the given parts. */
+export function rocketStats(parts: readonly Part[], upgrades: Upgrades = {}): RocketStats {
   const stats = { mass: 0 } as RocketStats;
   for (const key of STAT_KEYS) stats[key] = 0;
   for (const part of parts) {
     stats.mass += part.mass;
-    for (const key of STAT_KEYS) stats[key] += effectiveStat(part, key);
+    for (const key of STAT_KEYS) stats[key] += effectiveStat(part, key, upgrades[part.id]);
   }
   return stats;
 }

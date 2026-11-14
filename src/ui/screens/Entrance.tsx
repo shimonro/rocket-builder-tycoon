@@ -1,7 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { catalog, levels } from '../../data';
 import type { SaveData } from '../../services/persistence/save';
-import { continueAsUser, loadGuestPreview, playAsGuest, restoreSession, signIn, signOut, useSession } from '../../state/session';
+import {
+  continueAsUser,
+  loadGuestPreview,
+  playAsGuest,
+  requestPasswordReset,
+  restoreSession,
+  signIn,
+  signOut,
+  useSession,
+} from '../../state/session';
 import { rocketLook, rocketSvg } from '../art/rocketArt';
 import { money, Svg } from '../components/common';
 
@@ -17,6 +26,8 @@ export function Entrance() {
   const [guest, setGuest] = useState<SaveData | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   useEffect(() => {
     void loadGuestPreview().then(setGuest);
@@ -60,6 +71,30 @@ export function Entrance() {
                 Sign out
               </button>
             </>
+          ) : resetting ? (
+            <form
+              className="login"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void requestPasswordReset(email).then((ok) => setResetSent(!!ok));
+              }}
+            >
+              <p className="muted small">Enter your account email and we’ll send you a link to choose a new password.</p>
+              <input type="email" placeholder="Email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <div className="row">
+                <button type="submit" className="btn primary" disabled={busy || resetSent} data-testid="send-reset">
+                  Send reset link
+                </button>
+                <button type="button" className="btn ghost" onClick={() => (setResetting(false), setResetSent(false))}>
+                  Back
+                </button>
+              </div>
+              {resetSent && (
+                <p className="success small" data-testid="reset-sent">
+                  If an account exists for {email}, a reset link is on its way. Check your inbox (and spam folder).
+                </p>
+              )}
+            </form>
           ) : (
             <form className="login" onSubmit={submit('signin')}>
               <input type="email" placeholder="Email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -80,6 +115,9 @@ export function Entrance() {
                   Register
                 </button>
               </div>
+              <button type="button" className="link small" onClick={() => setResetting(true)} data-testid="forgot-password">
+                Forgot password?
+              </button>
             </form>
           )}
           {error && <p className="warn">{error}</p>}

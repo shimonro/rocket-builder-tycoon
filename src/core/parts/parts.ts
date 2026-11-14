@@ -45,8 +45,12 @@ export interface Part {
 
 export type Catalog = ReadonlyMap<string, Part>;
 
-export function effectiveStat(part: Part, key: StatKey): number {
-  return part[key] * RARITY_MULTIPLIER[part.rarity];
+/** Each upgrade level adds 10% to every stat of a part (mass excluded), up to MAX_UPGRADE. */
+export const MAX_UPGRADE = 3;
+export const UPGRADE_STEP = 0.1;
+
+export function effectiveStat(part: Part, key: StatKey, upgrade = 0): number {
+  return part[key] * RARITY_MULTIPLIER[part.rarity] * (1 + UPGRADE_STEP * Math.min(MAX_UPGRADE, Math.max(0, upgrade)));
 }
 
 function fail(message: string): never {

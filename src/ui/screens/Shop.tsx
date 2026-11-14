@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { CATEGORIES, RARITIES, STAT_KEYS, effectiveStat, type Category, type Rarity } from '../../core/parts/parts';
 import { rocketParts, rocketStats, ranking } from '../../core/rocket/rocket';
-import { catalog, prebuilts, rankingWeights } from '../../data';
+import { catalog, cosmetics, prebuilts, rankingWeights } from '../../data';
+import { COSMETIC_TYPES } from '../../engines/progression/progression';
 import { listParts, partLock } from '../../engines/shop/shop';
 import { useGame } from '../../state/game';
 import { rankingWith, rocketRanking, shopAccess, tutorialDone } from '../../state/selectors';
@@ -15,8 +16,8 @@ const LOCK_TEXT = {
 
 export function Shop() {
   const save = useGame((s) => s.save);
-  const { buyPart, buyPrebuilt } = useGame.getState();
-  const [tab, setTab] = useState<'parts' | 'prebuilts'>('parts');
+  const { buyPart, buyPrebuilt, buyCosmetic, equipCosmetic } = useGame.getState();
+  const [tab, setTab] = useState<'parts' | 'prebuilts' | 'cosmetics'>('parts');
   const [category, setCategory] = useState<Category | undefined>();
   const [rarity, setRarity] = useState<Rarity | undefined>();
   const [showLocked, setShowLocked] = useState(false);
@@ -29,7 +30,8 @@ export function Shop() {
   const parts = listParts(catalog, CATEGORIES, { category: shownCategory, rarity: free ? rarity : undefined }).filter(
     (p) => showLocked || partLock(p, access) === null,
   );
-  const current = rocketRanking(save.rocket);
+  const current = rocketRanking(save.rocket, save.upgrades);
+  const look = rocketLook(save.rocket, catalog);
 
   return (
     <div className="screen shop">
@@ -40,9 +42,63 @@ export function Shop() {
         <button type="button" disabled={!free} className={cx('tab', tab === 'prebuilts' && 'active')} onClick={() => setTab('prebuilts')} data-testid="tab-prebuilts">
           Prebuilt rockets
         </button>
+        <button type="button" disabled={!free} className={cx('tab', tab === 'cosmetics' && 'active')} onClick={() => setTab('cosmetics')} data-testid="tab-cosmetics">
+          💎 Cosmetics
+        </button>
       </div>
 
-      {tab === 'parts' ? (
+      {tab === 'cosmetics' ? (
+        <div className="cosmetics">
+          <p className="muted">
+            Cosmetics change only how your rocket looks. Pay with 💎 gems from daily missions and achievements — you have {save.gems} 💎.
+          </p>
+          {COSMETIC_TYPES.map((type) => (
+            <section key={type}>
+              <h3 className="cosmetic-heading">{{ paint: 'Hull paint', flame: 'Engine flame', trail: 'Smoke trail' }[type]}</h3>
+              <ul className="grid cosmetic-grid">
+                <li className={cx('card cosmetic-card', !save.cosmetics.equipped[type] && 'selected')}>
+                  <span className="swatch default" />
+                  <h4>Standard</h4>
+                  <button type="button" className="btn small ghost" disabled={!save.cosmetics.equipped[type]} onClick={() => equipCosmetic(type, null)}>
+                    {save.cosmetics.equipped[type] ? 'Use' : 'In use'}
+                  </button>
+                </li>
+                {cosmetics
+                  .filter((c) => c.type === type)
+                  .map((c) => {
+                    const owned = save.cosmetics.owned.includes(c.id);
+                    const equipped = save.cosmetics.equipped[type] === c.id;
+                    return (
+                      <li key={c.id} className={cx('card cosmetic-card', equipped && 'selected')} data-testid={`cosmetic-${c.id}`}>
+                        {type === 'paint' ? (
+                          <Svg svg={rocketSvg({ ...look, body: look.body ?? '#94a3b8', paint: c.color })} className="cosmetic-art" />
+                        ) : (
+                          <span className={cx('swatch', c.color === 'rainbow' && 'rainbow')} style={c.color === 'rainbow' ? undefined : { background: c.color }} />
+                        )}
+                        <h4>{c.name}</h4>
+                        {owned ? (
+                          <button type="button" className="btn small ghost" disabled={equipped} onClick={() => equipCosmetic(type, c.id)}>
+                            {equipped ? 'In use' : 'Use'}
+                          </button>
+                        ) : (
+                          <GateButton
+                            action={`cosmetic:${c.id}`}
+                            onClick={() => buyCosmetic(c.id)}
+                            disabled={save.gems < c.price}
+                            className="small primary"
+                            testId={`buy-cosmetic-${c.id}`}
+                          >
+                            {c.price} 💎
+                          </GateButton>
+                        )}
+                      </li>
+                    );
+                  })}
+              </ul>
+            </section>
+          ))}
+        </div>
+      ) : tab === 'parts' ? (
         <>
           <div className="filters" aria-label="Filters">
             <div className="chips">
@@ -81,7 +137,7 @@ export function Shop() {
               const lock = partLock(part, access);
               const owned = save.inventory[part.id] ?? 0;
               const equipped = Object.values(save.rocket).includes(part.id);
-              const delta = rankingWith(save.rocket, part) - current;
+              const delta = rankingWith(save.rocket, part, save.upgrades) - current;
               return (
                 <li key={part.id} className={cx('card part-card', lock && 'is-locked')} data-testid={`part-${part.id}`}>
                   <div className="part-head">

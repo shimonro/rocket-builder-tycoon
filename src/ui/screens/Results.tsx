@@ -1,19 +1,23 @@
 import { levels } from '../../data';
 import { useGame } from '../../state/game';
 import { levelById } from '../../state/selectors';
+import { useSession } from '../../state/session';
 import { GateButton, money } from '../components/common';
 
 const REASONS = { destroyed: '💥 Destroyed', fuel: '⛽ Out of fuel', aborted: '🛑 Flight ended' };
 
 export function Results() {
   const result = useGame((s) => s.lastResult);
-  const save = useGame((s) => s.save);
   const next = useGame((s) => s.continueFromResults);
+  const board = useSession((s) => s.leaderboard);
+  const user = useSession((s) => s.user);
+  const loginAvailable = useSession((s) => s.loginAvailable);
   if (!result) return null;
   const { payout } = result;
   const level = levelById(result.levelId);
   const nextLevel = levels.find((l) => l.id === level.id + 1);
-  const best = save.progress.best[level.id] ?? 0;
+  const newBest = payout.distance > result.previousBest && payout.distance > 0;
+  const boardHere = board?.levelId === level.id ? board : null;
 
   return (
     <div className="screen results">
@@ -27,7 +31,26 @@ export function Results() {
         {result.targetReached && (
           <p className="success">{result.firstCompletion ? '🏁 Level complete! New levels can be unlocked.' : '🏁 Target reached again!'}</p>
         )}
-        {payout.distance >= best && payout.distance > 0 && <p className="muted">New personal best for this level</p>}
+        {newBest && !result.tutorial && <p className="muted">New personal best for this level — your ghost will race you next time 👻</p>}
+        {result.achievements.length > 0 && (
+          <ul className="earned" data-testid="earned-achievements">
+            {result.achievements.map((a) => (
+              <li key={a.id}>
+                🏆 <b>{a.name}</b> — {a.description} <span className="gems-reward">+{a.gems} 💎</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {!result.tutorial && boardHere && (
+          <p className={boardHere.state === 'rejected' ? 'warn small' : 'muted small'} data-testid="leaderboard-status">
+            {boardHere.state === 'submitting'
+              ? '🏆 Verifying your run for the leaderboard…'
+              : boardHere.state === 'accepted'
+                ? `🏆 Verified! You are #${boardHere.rank} on the Level ${level.id} leaderboard.`
+                : `Leaderboard: ${boardHere.message}`}
+          </p>
+        )}
+        {!result.tutorial && newBest && loginAvailable && !user && <p className="muted small">Sign in to put your best runs on the leaderboards.</p>}
         <table className="breakdown">
           <tbody>
             <tr>
@@ -46,6 +69,12 @@ export function Results() {
               <td>Distance pay{payout.capped ? ' (soft cap reached)' : ''}</td>
               <td>{money(payout.distancePay)}</td>
             </tr>
+            {payout.coins > 0 && (
+              <tr>
+                <td>Coins ({payout.coins} 🪙)</td>
+                <td>{money(payout.coinPay)}</td>
+              </tr>
+            )}
             {payout.completionBonus > 0 && (
               <tr>
                 <td>Completion bonus</td>
@@ -60,6 +89,7 @@ export function Results() {
         </table>
         <p className="muted small">
           Hoops flown through: {result.hoops} · Obstacles blasted: {result.destroyed}
+          {result.guardianDefeated && ' · Guardian destroyed!'}
         </p>
         <div className="results-actions">
           {result.tutorial ? (

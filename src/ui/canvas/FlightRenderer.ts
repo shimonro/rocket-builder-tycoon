@@ -2,7 +2,8 @@ import { Application, Container, Graphics } from 'pixi.js';
 import { createRng } from '../../core/rng';
 import type { FlightStats } from '../../engines/journey/config';
 import type { JourneyEvent, JourneyState } from '../../engines/journey/journey';
-import type { Obstacle } from '../../engines/journey/spawner';
+import type { Obstacle, Pickup } from '../../engines/journey/spawner';
+import { ghostPosition, type Ghost } from '../../services/persistence/ghosts';
 
 export interface RendererOptions {
   rocketSvg: string;
@@ -13,7 +14,15 @@ export interface RendererOptions {
   targetDistance: number;
   /** Seeds the decorative planet and nebula colors. */
   levelId: number;
+  /** Cosmetics: flame color, and smoke trail color or 'rainbow'. */
+  flameColor?: string;
+  trail?: string;
+  /** The best earlier run on this level, drawn as a faint rocket. */
+  ghost?: Ghost | null;
 }
+
+const RAINBOW = [0xef4444, 0xf97316, 0xfacc15, 0x22c55e, 0x3b82f6, 0xa855f7];
+const hex = (color: string) => parseInt(color.slice(1), 16);
 
 const PLANET_COLORS = [0x60a5fa, 0xf472b6, 0xa78bfa, 0xfbbf24, 0x34d399, 0xf87171, 0x22d3ee, 0xfb923c, 0xc084fc, 0x94a3b8];
 
@@ -72,6 +81,22 @@ function drawObstacle(o: Obstacle): Graphics {
       g.circle(0, 0, r * 0.65).fill(0xdc2626).stroke(line);
       g.circle(0, 0, r * 0.22).fill(0xfde047);
       break;
+    case 'meteor':
+      g.poly([-r * 0.5, -r * 0.2, 0, -r * 4, r * 0.5, -r * 0.2]).fill({ color: 0xf97316, alpha: 0.35 });
+      g.circle(0, 0, r * 1.25).fill({ color: 0xf97316, alpha: 0.25 });
+      g.circle(0, 0, r).fill(0x9a3412).stroke(line);
+      g.circle(-r * 0.3, -r * 0.2, r * 0.3).fill(0xfb923c);
+      break;
+    case 'guardian':
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        g.poly([Math.cos(a - 0.12) * r * 0.8, Math.sin(a - 0.12) * r * 0.8, Math.cos(a) * r * 1.15, Math.sin(a) * r * 1.15, Math.cos(a + 0.12) * r * 0.8, Math.sin(a + 0.12) * r * 0.8]).fill(0x7f1d1d);
+      }
+      g.circle(0, 0, r * 0.85).fill(0x1f2937).stroke({ width: 0.3, color: 0xef4444 });
+      g.circle(0, 0, r * 0.55).fill(0x374151);
+      g.circle(0, 0, r * 0.3).fill(0xef4444);
+      g.circle(0, 0, r * 0.12).fill(0xfef2f2);
+      break;
     case 'ufo':
       g.ellipse(0, -r * 0.2, r * 0.45, r * 0.4).fill(0xa7f3d0).stroke(line);
       g.ellipse(0, r * 0.05, r, r * 0.35).fill(0x8b5cf6).stroke(line);
@@ -93,6 +118,20 @@ function drawObstacle(o: Obstacle): Graphics {
   return g;
 }
 
+function drawPickup(p: Pickup): Graphics {
+  const g = new Graphics();
+  if (p.kind === 'coin') {
+    g.circle(0, 0, 1.1).fill(0xfacc15).stroke({ width: 0.18, color: 0xa16207 });
+    g.circle(0, 0, 0.6).stroke({ width: 0.15, color: 0xfde68a });
+  } else {
+    g.circle(0, 0, 2).fill({ color: 0x4ade80, alpha: 0.18 });
+    g.roundRect(-1, -1.3, 2, 2.6, 0.3).fill(0xdc2626).stroke({ width: 0.15, color: 0x0f172a });
+    g.rect(-0.35, -1.7, 0.7, 0.45).fill(0x94a3b8);
+    g.moveTo(-0.6, -0.6).lineTo(0.6, 0.6).stroke({ width: 0.2, color: 0xfecaca });
+  }
+  return g;
+}
+
 function drawHoop(halfWidth: number): Graphics {
   const g = new Graphics();
   g.ellipse(0, 0, halfWidth, 1.1).stroke({ width: 1.1, color: 0xfacc15, alpha: 0.25 });
@@ -108,6 +147,9 @@ export class FlightRenderer {
   private readonly track = new Graphics();
   private readonly hoopLayer = new Container();
   private readonly obstacleLayer = new Container();
+  private readonly pickupLayer = new Container();
+  private readonly ghostView = new Container();
+  private readonly pickupViews = new Map<number, Graphics>();
   private readonly fx = new Graphics();
   private readonly rocket = new Container();
   private readonly flame = new Graphics();
@@ -135,7 +177,14 @@ export class FlightRenderer {
     art.pivot.set(50, 80);
     art.scale.set(ROCKET_WIDTH_M / 100);
     this.rocket.addChild(this.flame, art, this.shieldBubble);
-    this.world.addChild(this.track, this.hoopLayer, this.obstacleLayer, this.fx, this.rocket);
+    const ghostArt = new Graphics().svg(opts.rocketSvg);
+    ghostArt.pivot.set(50, 80);
+    ghostArt.scale.set(ROCKET_WIDTH_M / 100);
+    ghostArt.tint = 0x7dd3fc;
+    this.ghostView.addChild(ghostArt);
+    this.ghostView.alpha = 0.3;
+    this.ghostView.visible = false;
+    this.world.addChild(this.track, this.hoopLayer, this.pickupLayer, this.ghostView, this.obstacleLayer, this.fx, this.rocket);
     app.stage.addChild(this.backdrop, this.stars, this.world);
   }
 
@@ -151,6 +200,16 @@ export class FlightRenderer {
           break;
         case 'hoop':
           this.burst(e.x, e.y, 16, [0xfde047, 0xfef9c3], 10);
+          break;
+        case 'coin':
+          this.burst(e.x, e.y, 6, [0xfacc15, 0xfef9c3], 6);
+          break;
+        case 'fuelCan':
+          this.burst(e.x, e.y, 14, [0x4ade80, 0xdc2626], 9);
+          break;
+        case 'guardianDefeated':
+          this.shake = 0.5;
+          this.burst(e.x, e.y, 70, [0xef4444, 0xfacc15, 0xffffff, 0x7f1d1d], 26);
           break;
         case 'turbo':
           this.burst(state.x, state.y - 2, 12, [0x38bdf8, 0xe0f2fe], 12);
@@ -210,6 +269,7 @@ export class FlightRenderer {
     this.drawBackdrop(W, H, camY);
     this.drawStars(W, H, camY * ppm, state.vy);
     this.drawTrack(camY, H / ppm);
+    this.drawWinds(state, H / ppm);
 
     // Obstacles.
     const live = new Set<number>();
@@ -224,6 +284,7 @@ export class FlightRenderer {
       view.position.set(o.x, toY(o.y));
       if (o.kind === 'debris' || o.kind === 'satellite') view.rotation = this.time * (o.kind === 'debris' ? 1.6 : 0.4) + o.phase;
       if (o.kind === 'asteroid') view.rotation = this.time * 0.2 + o.phase;
+      if (o.kind === 'guardian') view.rotation = this.time * 0.6;
     }
     for (const [id, view] of this.obstacleViews) {
       if (!live.has(id)) {
@@ -257,6 +318,30 @@ export class FlightRenderer {
       }
     }
 
+    // Pickups: coins spin, fuel cans bob.
+    const livePickups = new Set<number>();
+    for (const p of state.pickups) {
+      livePickups.add(p.id);
+      let view = this.pickupViews.get(p.id);
+      if (!view) {
+        view = drawPickup(p);
+        this.pickupViews.set(p.id, view);
+        this.pickupLayer.addChild(view);
+      }
+      view.position.set(p.x, toY(p.y) + (p.kind === 'fuel' ? Math.sin(this.time * 3 + p.id) * 0.4 : 0));
+      if (p.kind === 'coin') view.scale.x = Math.max(0.15, Math.abs(Math.cos(this.time * 4 + p.id)));
+    }
+    for (const [id, view] of this.pickupViews) {
+      if (!livePickups.has(id)) {
+        view.destroy();
+        this.pickupViews.delete(id);
+      }
+    }
+
+    const ghost = this.opts.ghost ? ghostPosition(this.opts.ghost, state.time) : null;
+    this.ghostView.visible = ghost !== null;
+    if (ghost) this.ghostView.position.set(ghost.x, toY(ghost.y));
+
     // Rocket, flame and shield.
     this.rocket.visible = !this.exploded;
     this.rocket.position.set(state.x, 0);
@@ -267,7 +352,8 @@ export class FlightRenderer {
     if (thrusting) {
       const boost = state.turboTime > 0 ? 1.8 : state.hoopTime > 0 ? 1.4 : 1;
       const len = (1.5 + state.throttle * 2) * boost * (0.85 + Math.random() * 0.3);
-      this.flame.poly([-0.8, 2.9, 0.8, 2.9, 0, 2.9 + len]).fill(state.turboTime > 0 ? 0x38bdf8 : 0xf97316);
+      const flame = this.opts.flameColor ? hex(this.opts.flameColor) : 0xf97316;
+      this.flame.poly([-0.8, 2.9, 0.8, 2.9, 0, 2.9 + len]).fill(state.turboTime > 0 ? 0x38bdf8 : flame);
       this.flame.poly([-0.45, 2.9, 0.45, 2.9, 0, 2.9 + len * 0.6]).fill(0xfde68a);
       if (Math.random() < 0.8) {
         this.particles.push({
@@ -278,8 +364,8 @@ export class FlightRenderer {
           life: 0.7,
           maxLife: 0.7,
           size: 0.35,
-          grow: 1.4,
-          color: 0x94a3b8,
+          grow: this.opts.trail ? 0.6 : 1.4,
+          color: this.trailColor(),
         });
       }
     }
@@ -291,6 +377,12 @@ export class FlightRenderer {
     }
 
     this.drawFx(state, dt, toY);
+  }
+
+  private trailColor(): number {
+    const trail = this.opts.trail;
+    if (!trail) return 0x94a3b8;
+    return trail === 'rainbow' ? RAINBOW[Math.floor(this.time * 12) % RAINBOW.length] : hex(trail);
   }
 
   private drawBackdrop(W: number, H: number, camY: number) {
@@ -357,6 +449,24 @@ export class FlightRenderer {
     }
   }
 
+  private drawWinds(state: JourneyState, visibleMeters: number) {
+    const g = this.track;
+    const W = this.opts.worldWidth;
+    for (const w of state.winds) {
+      if (w.y0 > state.y + visibleMeters || w.y1 < state.y - visibleMeters) continue;
+      const top = -(w.y1 - state.y);
+      const height = w.y1 - w.y0;
+      g.rect(0, top, W, height).fill({ color: 0x7dd3fc, alpha: 0.05 });
+      const dir = Math.sign(w.force);
+      const shift = (((this.time * w.force) % 8) + 8) % 8;
+      for (let y = top + 3; y < top + height; y += 7) {
+        for (let x = -8 + shift; x < W; x += 8) {
+          g.moveTo(x, y - 0.8).lineTo(x + dir * 1.2, y).lineTo(x, y + 0.8).stroke({ width: 0.2, color: 0xbae6fd, alpha: 0.35 });
+        }
+      }
+    }
+  }
+
   private drawFx(state: JourneyState, dt: number, toY: (y: number) => number) {
     const g = this.fx;
     g.clear();
@@ -372,7 +482,7 @@ export class FlightRenderer {
       g.rect(p.x - 0.08, toY(p.y) - 1, 0.16, 2).fill(0xffffff);
     }
     for (const o of state.obstacles) {
-      if (o.hp < o.maxHp) {
+      if (o.hp < o.maxHp || o.kind === 'guardian') {
         const w = o.r * 1.6;
         g.rect(o.x - w / 2, toY(o.y) - o.r - 1.2, w, 0.4).fill({ color: 0x0f172a, alpha: 0.7 });
         g.rect(o.x - w / 2, toY(o.y) - o.r - 1.2, (w * Math.max(0, o.hp)) / o.maxHp, 0.4).fill(0xef4444);
@@ -383,5 +493,6 @@ export class FlightRenderer {
   destroy() {
     this.obstacleViews.clear();
     this.hoopViews.clear();
+    this.pickupViews.clear();
   }
 }

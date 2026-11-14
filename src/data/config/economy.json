@@ -9,5 +9,7 @@
   ],
   "repeatCompletionBonusFactor": 0.25,
   "sellBackFactor": 0.5,
+  "upgradeCostFactor": 0.5,
+  "coinValue": 10,
   "shieldsAndWeaponsFromLevel": 2
 }

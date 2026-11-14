@@ -91,6 +91,7 @@ export function GateButton({ action, onClick, disabled, className, title, childr
 export function Coach() {
   const step = useGame((s) => s.save.tutorialStep);
   const tutorialNext = useGame((s) => s.tutorialNext);
+  const skip = useGame((s) => s.skipTutorial);
   if (step === 'done' || step === 'flight') return null;
   return (
     <div className="coach" data-testid="coach" role="status">
@@ -99,9 +100,14 @@ export function Coach() {
       </span>
       <p>{TUTORIAL_MESSAGES[step]}</p>
       {step === 'welcome' && (
-        <GateButton action="next" onClick={tutorialNext} className="primary" testId="tutorial-next">
-          Let’s go!
-        </GateButton>
+        <div className="coach-actions">
+          <GateButton action="next" onClick={tutorialNext} className="primary" testId="tutorial-next">
+            Let’s go!
+          </GateButton>
+          <button type="button" className="btn ghost small" onClick={skip} data-testid="skip-tutorial">
+            I’ve played before — skip
+          </button>
+        </div>
       )}
     </div>
   );

@@ -96,18 +96,18 @@ describe('economy', () => {
   });
 
   it('computes payout = effective distance × multiplier × (1 + ranking bonus)', () => {
-    const p = computePayout({ distance: 2500.7, level, ranking: 150, targetReached: true, firstCompletion: true }, economy);
+    const p = computePayout({ distance: 2500.7, level, ranking: 150, targetReached: true, firstCompletion: true, coins: 0 }, economy);
     // 1625 × 0.5 × 1.1 = 893.75
     expect(p).toMatchObject({ distance: 2500, distancePay: 894, capped: false, completionBonus: 300, total: 1194, softCap: 1500 });
   });
 
   it('hard-stops distance pay at the soft cap', () => {
-    const p = computePayout({ distance: 50000, level, ranking: 100, targetReached: true, firstCompletion: false }, economy);
+    const p = computePayout({ distance: 50000, level, ranking: 100, targetReached: true, firstCompletion: false, coins: 0 }, economy);
     expect(p).toMatchObject({ distancePay: 1500, capped: true, completionBonus: 75, total: 1575 });
   });
 
   it('pays no completion bonus short of the target and never pays for negative distance', () => {
-    const p = computePayout({ distance: -5, level, ranking: 0, targetReached: false, firstCompletion: false }, economy);
+    const p = computePayout({ distance: -5, level, ranking: 0, targetReached: false, firstCompletion: false, coins: 0 }, economy);
     expect(p.total).toBe(0);
   });
 });

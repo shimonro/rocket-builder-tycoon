@@ -1063,6 +1063,258 @@ select {
   text-align: center;
 }
 
+/* Gems, missions, achievements */
+.pill.gems {
+  color: #e9d5ff;
+  border-color: #6b21a8;
+  background: #2a0b45;
+}
+
+.nav-btn {
+  position: relative;
+}
+
+.badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 99px;
+  background: var(--bad);
+  color: #fff;
+  font-size: 0.7rem;
+  line-height: 18px;
+}
+
+.coach-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.coach.tip {
+  background: linear-gradient(90deg, #0b2a44, #0b1a2e);
+  border-color: var(--accent);
+}
+
+.missions {
+  display: grid;
+  gap: 16px;
+}
+
+.mission-list,
+.achievement-grid,
+.earned,
+.board,
+.conflict-options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.mission {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-2);
+}
+
+.mission.done {
+  border-color: var(--good);
+}
+
+.mission.claimed {
+  opacity: 0.6;
+}
+
+.mission-text {
+  flex: 1;
+  display: grid;
+  gap: 6px;
+}
+
+.mission-text small,
+.achievement small {
+  color: var(--muted);
+}
+
+.achievement-grid {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.achievement {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  opacity: 0.75;
+}
+
+.achievement div {
+  flex: 1;
+  display: grid;
+  gap: 4px;
+}
+
+.achievement.done {
+  opacity: 1;
+  border-color: #a78bfa;
+  background: #1e1238;
+}
+
+.achievement-icon {
+  font-size: 1.5rem;
+}
+
+.gems-reward {
+  color: #d8b4fe;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.earned li {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #1e1238;
+  border: 1px solid #6b21a8;
+}
+
+/* Upgrades */
+.upgrade-level {
+  color: var(--accent-2);
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+}
+
+.btn.upgrade {
+  color: var(--accent-2);
+}
+
+/* Cosmetics */
+.cosmetic-heading {
+  margin: 18px 0 10px;
+}
+
+.cosmetic-grid {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+.cosmetic-card {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.cosmetic-card h4 {
+  margin: 0;
+}
+
+.cosmetic-card.selected {
+  border-color: var(--accent);
+}
+
+.cosmetic-art svg {
+  width: 48px;
+  height: 77px;
+}
+
+.swatch {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid #ffffff33;
+}
+
+.swatch.default {
+  background: repeating-linear-gradient(45deg, #334155 0 6px, #1e293b 6px 12px);
+}
+
+.swatch.rainbow {
+  background: conic-gradient(#ef4444, #f97316, #facc15, #22c55e, #3b82f6, #a855f7, #ef4444);
+}
+
+/* Leaderboards */
+.board-link {
+  justify-self: start;
+  font-size: 0.85rem;
+}
+
+.modal.leaderboard {
+  width: min(440px, 100%);
+}
+
+.board li {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  text-align: left;
+}
+
+.board li.me {
+  outline: 1px solid var(--accent);
+}
+
+.board .rank {
+  font-weight: 800;
+  color: var(--accent-2);
+}
+
+.board .dist {
+  font-variant-numeric: tabular-nums;
+}
+
+.conflict-options li {
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  text-align: left;
+}
+
+/* Flight extras */
+.hud-bars .coins {
+  color: #fde047;
+  font-weight: 700;
+}
+
+.wind-indicator {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #bae6fd;
+  font-weight: 700;
+  text-shadow: 0 1px 4px #000;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.banner.warning {
+  top: 24%;
+  border-color: #f97316;
+  background: #2a1205dd;
+}
+
+.crash {
+  display: grid;
+  place-items: center;
+  min-height: 80vh;
+  text-align: center;
+}
+
 /* Responsive */
 @media (max-width: 980px) {
   .hangar {
@@ -1083,6 +1335,12 @@ select {
   .topbar {
     padding: 8px;
     gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .wallet {
+    width: 100%;
+    justify-content: center;
   }
 
   .nav {
@@ -1105,9 +1363,22 @@ select {
   }
 
   .coach {
-    top: 60px;
+    position: relative;
+    top: auto;
     width: calc(100% - 20px);
     flex-wrap: wrap;
+  }
+
+  .hangar > * {
+    min-width: 0;
+  }
+
+  .slot {
+    flex-wrap: wrap;
+  }
+
+  .slot-part {
+    min-width: 120px;
   }
 
   .screen {

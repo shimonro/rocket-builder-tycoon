@@ -5,6 +5,7 @@ import {
   abortJourney,
   createJourney,
   journeyDistance,
+  FIXED_STEP,
   MAX_STEP,
   NO_INPUT,
   stepJourney,
@@ -13,6 +14,7 @@ import {
   type JourneyInput,
   type JourneyState,
 } from './journey';
+import { appendInput, decodeInput, encodeInput, isValidLog, replayJourney } from './replay';
 import { generateChunk, type JourneyLevel, type Obstacle } from './spawner';
 
 const cfg: JourneyConfig = journeyJson;
@@ -46,7 +48,7 @@ function run(state: JourneyState, ctx: JourneyContext, seconds: number, input: J
 }
 
 function obstacle(o: Partial<Obstacle>): Obstacle {
-  return { id: 999, kind: 'asteroid', x: 25, y: 10, r: 2, vx: 0, wobble: 0, phase: 0, hp: 30, maxHp: 30, damage: 25, ...o };
+  return { id: 999, kind: 'asteroid', x: 25, y: 10, r: 2, vx: 0, vy: 0, wobble: 0, phase: 0, hp: 30, maxHp: 30, damage: 25, ...o };
 }
 
 describe('deriveFlightStats', () => {
@@ -101,7 +103,7 @@ describe('generateChunk', () => {
       expect(o.x + o.r).toBeLessThanOrEqual(cfg.worldWidth);
       expect(level.obstacleTypes).toContain(o.kind);
     }
-    const ids = [...chunk.obstacles, ...chunk.hoops].map((x) => x.id);
+    const ids = [...chunk.obstacles, ...chunk.hoops, ...chunk.pickups, ...chunk.winds].map((x) => x.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(chunk.nextId).toBe(100 + ids.length);
   });
@@ -327,5 +329,174 @@ describe('stepJourney: lifecycle', () => {
     expect(aborted).toMatchObject({ status: 'ended', endReason: 'aborted' });
     expect(abortJourney(aborted)).toBe(aborted);
     expect(stepJourney(aborted, NO_INPUT, 1 / 60, ctx)).toEqual({ state: aborted, events: [] });
+  });
+});
+
+describe('generateChunk: variety', () => {
+  const base: JourneyLevel = { id: 1, targetDistance: 1000, obstacleDensity: 0, obstacleTypes: ['asteroid'], hoopDensity: 0 };
+  const chunks = (level: JourneyLevel, n = 60) => Array.from({ length: n }, (_, i) => generateChunk(i, level, cfg, 3, 1, 1));
+
+  it('adds meteor showers from their level on, falling towards the rocket', () => {
+    expect(chunks(base).some((c) => c.shower)).toBe(false);
+    const showers = chunks({ ...base, id: cfg.meteorShower.fromLevel }).filter((c) => c.shower);
+    expect(showers.length).toBeGreaterThan(2);
+    const meteors = showers[0].obstacles.filter((o) => o.kind === 'meteor');
+    expect(meteors).toHaveLength(cfg.meteorShower.count);
+    for (const m of meteors) {
+      expect(-m.vy).toBeGreaterThanOrEqual(cfg.meteorShower.speed[0]);
+      expect(-m.vy).toBeLessThanOrEqual(cfg.meteorShower.speed[1]);
+    }
+  });
+
+  it('places one guardian just before the finish line from its level on', () => {
+    const guardians = (level: JourneyLevel) => chunks(level).flatMap((c) => c.obstacles.filter((o) => o.kind === 'guardian'));
+    expect(guardians(base)).toEqual([]);
+    const found = guardians({ ...base, id: cfg.guardian.fromLevel });
+    expect(found).toHaveLength(1);
+    expect(found[0].y).toBe(1000 - cfg.guardian.offset);
+  });
+
+  it('adds wind bands inside the chunk from their level on', () => {
+    expect(chunks(base).flatMap((c) => c.winds)).toEqual([]);
+    const level = { ...base, id: cfg.wind.fromLevel };
+    const all = chunks(level);
+    const winds = all.flatMap((c) => c.winds);
+    expect(winds.length).toBeGreaterThan(4);
+    expect(winds.some((w) => w.force < 0) && winds.some((w) => w.force > 0)).toBe(true);
+    all.forEach((c, i) => {
+      const y0 = cfg.firstChunkY + i * cfg.chunkSize;
+      for (const w of c.winds) {
+        expect(w.y0).toBeGreaterThanOrEqual(y0);
+        expect(w.y1).toBeLessThanOrEqual(y0 + cfg.chunkSize);
+        expect(Math.abs(w.force)).toBeGreaterThanOrEqual(cfg.wind.force[0]);
+      }
+    });
+  });
+
+  it('lays coin trails and the odd fuel can', () => {
+    const pickups = chunks(base).flatMap((c) => c.pickups);
+    const coins = pickups.filter((p) => p.kind === 'coin');
+    const cans = pickups.filter((p) => p.kind === 'fuel');
+    expect(coins.length % cfg.coins.rowSize).toBe(0);
+    expect(coins.length / cfg.coins.rowSize).toBeGreaterThan(60 * cfg.coins.rowsPer100m * 0.6);
+    expect(cans.length).toBeGreaterThan(2);
+    expect(cans.length).toBeLessThan(20);
+    for (const p of pickups) {
+      expect(p.x).toBeGreaterThan(0);
+      expect(p.x).toBeLessThan(cfg.worldWidth);
+    }
+  });
+});
+
+describe('stepJourney: variety', () => {
+  it('lets wind push the rocket sideways only inside the band', () => {
+    const ctx = context();
+    const s = { ...createJourney(ctx), winds: [{ id: 1, y0: -5, y1: 5, force: 10 }] };
+    expect(stepJourney(s, NO_INPUT, 0.1 / 3, ctx).state.x).toBeCloseTo(25 + 10 / 30);
+    const above = { ...s, winds: [{ id: 1, y0: 50, y1: 60, force: 10 }] };
+    expect(stepJourney(above, NO_INPUT, 0.1 / 3, ctx).state.x).toBe(25);
+  });
+
+  it('moves meteors down and announces showers as they spawn', () => {
+    const ctx = context();
+    const s = { ...createJourney(ctx), obstacles: [obstacle({ y: 100, vy: -15 })] };
+    expect(stepJourney(s, NO_INPUT, 0.1, ctx).state.obstacles[0].y).toBeCloseTo(100 - 15 * MAX_STEP);
+    const stormy = context({}, { id: cfg.meteorShower.fromLevel });
+    const { events } = run(createJourney(stormy), stormy, 60, { ...NO_INPUT, forward: true });
+    expect(events.some((e) => e.type === 'meteorShower')).toBe(true);
+  });
+
+  it('collects coins and refills fuel from cans, even while gliding', () => {
+    const ctx = context();
+    const s = {
+      ...createJourney(ctx),
+      fuel: 0,
+      status: 'gliding' as const,
+      vy: 20,
+      pickups: [
+        { id: 1001, kind: 'coin' as const, x: 25, y: 1 },
+        { id: 1002, kind: 'fuel' as const, x: 26, y: 0.5 },
+        { id: 1003, kind: 'coin' as const, x: 40, y: 1 },
+      ],
+    };
+    const { state, events } = stepJourney(s, NO_INPUT, 1 / 60, ctx);
+    expect(state).toMatchObject({ coins: 1, fuelCans: 1, status: 'flying' });
+    expect(state.fuel).toBeCloseTo(stats.fuelCapacity * cfg.fuelCan.refill);
+    expect(state.pickups.map((p) => p.id)).not.toContain(1001);
+    expect(state.pickups.map((p) => p.id)).toContain(1003);
+    expect(events.map((e) => e.type)).toEqual(['coin', 'fuelCan']);
+  });
+
+  it('never overfills the tank and drops pickups left far behind', () => {
+    const ctx = context();
+    const s = {
+      ...createJourney(ctx),
+      y: 500,
+      maxY: 500,
+      nextChunk: 100,
+      pickups: [
+        { id: 1, kind: 'fuel' as const, x: 25, y: 500 },
+        { id: 2, kind: 'coin' as const, x: 25, y: 500 - cfg.despawnBelow - 1 },
+      ],
+      winds: [{ id: 3, y0: 0, y1: 10, force: 5 }],
+    };
+    const { state } = stepJourney(s, NO_INPUT, 1 / 60, ctx);
+    expect(state.fuel).toBeCloseTo(stats.fuelCapacity);
+    expect(state).toMatchObject({ pickups: [], winds: [], coins: 0 });
+  });
+
+  it('keeps the guardian after a ram, but pays coins when it is shot down', () => {
+    const ctx = context({ weaponDamage: 200, ammo: 3 });
+    const guardian = obstacle({ kind: 'guardian', y: 0.5, r: 6, hp: 100, damage: 45 });
+    const rammed = stepJourney({ ...createJourney(ctx), obstacles: [guardian] }, NO_INPUT, 1 / 60, ctx).state;
+    expect(rammed.hull).toBe(15);
+    expect(rammed.obstacles).toHaveLength(1);
+
+    const s = { ...createJourney(ctx), obstacles: [{ ...guardian, y: 30 }] };
+    const { state, events } = run(s, ctx, 0.5, { ...NO_INPUT, fire: true });
+    expect(state).toMatchObject({ guardianDefeated: true, coins: cfg.guardian.coinReward, obstacles: [] });
+    expect(events).toContainEqual(expect.objectContaining({ type: 'guardianDefeated' }));
+  });
+});
+
+describe('replay', () => {
+  it('packs inputs losslessly at tenth-step steering', () => {
+    const input = { steer: -0.43, forward: true, backward: false, turbo: true, fire: true };
+    expect(decodeInput(encodeInput(input))).toEqual({ ...input, steer: -0.4 });
+    expect(decodeInput(encodeInput({ ...NO_INPUT, steer: 7, backward: true }))).toEqual({ ...NO_INPUT, steer: 1, backward: true });
+    expect(decodeInput(encodeInput(NO_INPUT))).toEqual(NO_INPUT);
+  });
+
+  it('run-length encodes the log and validates untrusted logs', () => {
+    const log: number[] = [];
+    for (const code of [5, 5, 5, 9, 5]) appendInput(log, code);
+    expect(log).toEqual([5, 3, 9, 1, 5, 1]);
+    expect(isValidLog(log, 5)).toBe(true);
+    expect(isValidLog(log, 4)).toBe(false);
+    expect(isValidLog('x', 9)).toBe(false);
+    expect(isValidLog([5], 9)).toBe(false);
+    expect(isValidLog([21 << 4, 1], 9)).toBe(false);
+    expect(isValidLog([-1, 1], 9)).toBe(false);
+    expect(isValidLog([5, 0], 9)).toBe(false);
+    expect(isValidLog([5, 1.5], 9)).toBe(false);
+  });
+
+  it('reproduces a live flight exactly from its log', () => {
+    const ctx = context({ weaponDamage: 20, ammo: 12 }, { id: 5, obstacleDensity: 3, hoopDensity: 1, obstacleTypes: ['asteroid', 'mine'] });
+    const log: number[] = [];
+    let live = createJourney(ctx);
+    for (let i = 0; live.status !== 'ended' && i < 4000; i++) {
+      const raw = { steer: Math.sin(i / 40) * 0.77, forward: i % 300 < 200, backward: false, turbo: i % 500 === 0, fire: i % 90 < 3 };
+      const code = encodeInput(raw);
+      appendInput(log, code);
+      live = stepJourney(live, decodeInput(code), FIXED_STEP, ctx).state;
+    }
+    const replayed = replayJourney(ctx, log, live.status !== 'ended');
+    expect(journeyDistance(replayed)).toBe(journeyDistance(live));
+    expect(replayed.coins).toBe(live.coins);
+    expect(replayed.status).toBe('ended');
+    // A log that stops early without an abort leaves the flight running.
+    expect(replayJourney(ctx, log.slice(0, 2), false).status).not.toBe('ended');
+    expect(replayJourney(ctx, log.slice(0, 2), true)).toMatchObject({ status: 'ended', endReason: 'aborted' });
   });
 });

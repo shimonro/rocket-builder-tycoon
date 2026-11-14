@@ -1,5 +1,5 @@
 import type { FlightStats, JourneyConfig } from './config';
-import { generateChunk, type Hoop, type JourneyLevel, type Obstacle } from './spawner';
+import { generateChunk, type Hoop, type JourneyLevel, type Obstacle, type Pickup, type WindZone } from './spawner';
 
 export interface JourneyInput {
   /** -1 (left) … 1 (right). */
@@ -42,6 +42,8 @@ export interface JourneyState {
   invulnerable: number;
   obstacles: Obstacle[];
   hoops: Hoop[];
+  pickups: Pickup[];
+  winds: WindZone[];
   projectiles: Projectile[];
   nextChunk: number;
   nextId: number;
@@ -50,6 +52,9 @@ export interface JourneyState {
   targetReached: boolean;
   hoopsCollected: number;
   obstaclesDestroyed: number;
+  coins: number;
+  fuelCans: number;
+  guardianDefeated: boolean;
 }
 
 export type JourneyEvent =
@@ -58,6 +63,10 @@ export type JourneyEvent =
   | { type: 'hoop'; x: number; y: number }
   | { type: 'hit'; x: number; y: number; damage: number; absorbed: number }
   | { type: 'obstacleDestroyed'; x: number; y: number; kind: string }
+  | { type: 'coin'; x: number; y: number }
+  | { type: 'fuelCan'; x: number; y: number }
+  | { type: 'meteorShower' }
+  | { type: 'guardianDefeated'; x: number; y: number }
   | { type: 'fuelEmpty' }
   | { type: 'targetReached' }
   | { type: 'ended'; reason: EndReason };
@@ -73,6 +82,8 @@ export interface JourneyContext {
 
 /** Largest step that keeps collisions from tunnelling; callers subdivide longer frames. */
 export const MAX_STEP = 1 / 30;
+/** The step the game and replay verification both use, so a recorded run replays exactly. */
+export const FIXED_STEP = 1 / 60;
 
 export function createJourney(ctx: JourneyContext): JourneyState {
   const { stats, cfg } = ctx;
@@ -95,6 +106,8 @@ export function createJourney(ctx: JourneyContext): JourneyState {
     invulnerable: 0,
     obstacles: [],
     hoops: [],
+    pickups: [],
+    winds: [],
     projectiles: [],
     nextChunk: 0,
     nextId: 1,
@@ -103,6 +116,9 @@ export function createJourney(ctx: JourneyContext): JourneyState {
     targetReached: false,
     hoopsCollected: 0,
     obstaclesDestroyed: 0,
+    coins: 0,
+    fuelCans: 0,
+    guardianDefeated: false,
   };
 }
 
@@ -167,7 +183,8 @@ export function stepJourney(
   s.vx = approach(s.vx, steer * stats.lateralMax, stats.lateralAccel * dt);
   const minX = cfg.rocketRadius;
   const maxX = cfg.worldWidth - cfg.rocketRadius;
-  s.x += s.vx * dt;
+  const wind = s.winds.find((w) => s.y >= w.y0 && s.y <= w.y1);
+  s.x += (s.vx + (wind ? wind.force : 0)) * dt;
   if (s.x < minX || s.x > maxX) {
     s.x = Math.max(minX, Math.min(maxX, s.x));
     s.vx = 0;
@@ -184,10 +201,15 @@ export function stepJourney(
   // Spawn sky ahead.
   let obstacles = s.obstacles;
   let hoops = s.hoops;
+  let pickups = s.pickups;
+  let winds = s.winds;
   while (cfg.firstChunkY + s.nextChunk * cfg.chunkSize < s.y + cfg.lookahead) {
     const chunk = generateChunk(s.nextChunk, level, cfg, ctx.seed, ctx.densityFactor, s.nextId);
     obstacles = [...obstacles, ...chunk.obstacles];
     hoops = [...hoops, ...chunk.hoops];
+    pickups = [...pickups, ...chunk.pickups];
+    winds = [...winds, ...chunk.winds];
+    if (chunk.shower) events.push({ type: 'meteorShower' });
     s.nextId = chunk.nextId;
     s.nextChunk += 1;
   }
@@ -204,7 +226,7 @@ export function stepJourney(
         x = Math.max(o.r, Math.min(cfg.worldWidth - o.r, x));
         ovx = -ovx;
       }
-      return { ...o, x, vx: ovx };
+      return { ...o, x, y: o.y + o.vy * dt, vx: ovx };
     });
 
   // Weapons.
@@ -230,6 +252,11 @@ export function stepJourney(
         destroyed.add(target.id);
         s.obstaclesDestroyed += 1;
         events.push({ type: 'obstacleDestroyed', x: target.x, y: target.y, kind: target.kind });
+        if (target.kind === 'guardian') {
+          s.guardianDefeated = true;
+          s.coins += cfg.guardian.coinReward;
+          events.push({ type: 'guardianDefeated', x: target.x, y: target.y });
+        }
       }
       return [];
     }
@@ -241,7 +268,8 @@ export function stepJourney(
   for (const o of obstacles) {
     if (destroyed.has(o.id) || s.invulnerable > 0) continue;
     if (Math.hypot(o.x - s.x, o.y - s.y) >= o.r + cfg.rocketRadius) continue;
-    destroyed.add(o.id);
+    // Ramming breaks ordinary obstacles; the guardian shrugs it off.
+    if (o.kind !== 'guardian') destroyed.add(o.id);
     const absorbed = Math.min(s.shield, o.damage);
     s.shield -= absorbed;
     s.hull = Math.max(0, s.hull - (o.damage - absorbed));
@@ -264,8 +292,27 @@ export function stepJourney(
       return { ...h, crossed: true, collected };
     });
 
+  // Pickups: coins pay out after the flight, fuel cans refill part of the tank.
+  const reach = cfg.rocketRadius + cfg.coins.radius;
+  pickups = pickups.filter((p) => {
+    if (p.y < floor) return false;
+    if (Math.hypot(p.x - s.x, p.y - s.y) >= (p.kind === 'coin' ? reach : cfg.rocketRadius + cfg.fuelCan.radius)) return true;
+    if (p.kind === 'coin') {
+      s.coins += 1;
+      events.push({ type: 'coin', x: p.x, y: p.y });
+    } else {
+      s.fuelCans += 1;
+      s.fuel = Math.min(stats.fuelCapacity, s.fuel + stats.fuelCapacity * cfg.fuelCan.refill);
+      if (s.status === 'gliding') s.status = 'flying';
+      events.push({ type: 'fuelCan', x: p.x, y: p.y });
+    }
+    return false;
+  });
+
   s.obstacles = obstacles;
   s.hoops = hoops;
+  s.pickups = pickups;
+  s.winds = winds.filter((w) => w.y1 >= floor);
   s.projectiles = projectiles;
 
   if (s.hull === 0) {

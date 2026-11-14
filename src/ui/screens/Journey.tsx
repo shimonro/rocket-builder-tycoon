@@ -1,22 +1,26 @@
 import { Application } from 'pixi.js';
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { rocketParts, rocketStats } from '../../core/rocket/rocket';
-import { catalog, journeyConfig } from '../../data';
+import { catalog, cosmetics, journeyConfig } from '../../data';
 import { deriveFlightStats } from '../../engines/journey/config';
 import {
   abortJourney,
   createJourney,
+  FIXED_STEP,
   journeyDistance,
-  MAX_STEP,
   stepJourney,
   type JourneyContext,
   type JourneyEvent,
   type JourneyInput,
   type JourneyState,
 } from '../../engines/journey/journey';
+import { appendInput, decodeInput, encodeInput } from '../../engines/journey/replay';
 import { TUTORIAL_MESSAGES } from '../../engines/tutorial/tutorial';
+import { setEngineSound, setMusicMode, stopEngineSound } from '../../services/audio/audio';
+import { GHOST_INTERVAL } from '../../services/persistence/ghosts';
 import { gameEvents, useGame } from '../../state/game';
 import { levelById, tutorialDone } from '../../state/selectors';
+import { ghosts } from '../../state/session';
 import { rocketLook, rocketSvg } from '../art/rocketArt';
 import { FlightRenderer } from '../canvas/FlightRenderer';
 import { Bar, cx } from '../components/common';
@@ -44,6 +48,8 @@ interface Hud {
   gliding: boolean;
   ended: boolean;
   hoops: number;
+  coins: number;
+  wind: number;
 }
 
 function hudOf(s: JourneyState, turboTotal: number): Hud {
@@ -59,6 +65,8 @@ function hudOf(s: JourneyState, turboTotal: number): Hud {
     gliding: s.status === 'gliding',
     ended: s.status === 'ended',
     hoops: s.hoopsCollected,
+    coins: s.coins,
+    wind: s.winds.find((w) => s.y >= w.y0 - 40 && s.y <= w.y1)?.force ?? 0,
   };
 }
 
@@ -70,24 +78,35 @@ function emit(events: JourneyEvent[]) {
   }
 }
 
+const cosmeticColor = (id: string | undefined) => cosmetics.find((c) => c.id === id)?.color;
+
 export function Journey() {
   const save = useGame((s) => s.save);
   const flightNumber = useGame((s) => s.flightNumber);
+  const flightSeed = useGame((s) => s.flightSeed);
   const finishFlight = useGame((s) => s.finishFlight);
   const tutorial = !tutorialDone(save);
   const level = levelById(save.selectedLevel);
 
   // Everything about this flight is fixed at launch.
   const setup = useMemo(() => {
-    const stats = deriveFlightStats(rocketStats(rocketParts(save.rocket, catalog)), journeyConfig, !tutorial);
+    const stats = deriveFlightStats(rocketStats(rocketParts(save.rocket, catalog), save.upgrades), journeyConfig, !tutorial);
     const ctx: JourneyContext = {
       stats,
       level,
       cfg: journeyConfig,
-      seed: flightNumber * 7919 + level.id,
+      seed: flightSeed,
       densityFactor: tutorial ? journeyConfig.tutorialDensityFactor : 1,
     };
-    return { ctx, svg: rocketSvg(rocketLook(save.rocket, catalog)) };
+    const { equipped } = save.cosmetics;
+    const look = { ...rocketLook(save.rocket, catalog), paint: cosmeticColor(equipped.paint) };
+    return {
+      ctx,
+      svg: rocketSvg(look),
+      flameColor: cosmeticColor(equipped.flame),
+      trail: cosmeticColor(equipped.trail),
+      ghost: !tutorial && save.settings.ghost ? ghosts.get(level.id) : null,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flightNumber]);
   const { stats } = setup.ctx;
@@ -101,6 +120,7 @@ export function Journey() {
   const [paused, setPaused] = useState(false);
   const [hud, setHud] = useState<Hud>(() => hudOf(stateRef.current, turboTotal));
   const [showHint, setShowHint] = useState(tutorial);
+  const [warning, setWarning] = useState<string | null>(null);
   const touchMode = save.settings.touchControls;
   const showTouch = touchMode === 'on' || (touchMode === 'auto' && window.matchMedia('(pointer: coarse)').matches);
 
@@ -125,6 +145,16 @@ export function Journey() {
     let hudTimer = 0;
     let endTimer = 0;
     let finished = false;
+    let acc = 0;
+    let warnTimer: ReturnType<typeof setTimeout> | undefined;
+    const log: number[] = [];
+    const track: number[] = [];
+    const warn = (text: string) => {
+      setWarning(text);
+      clearTimeout(warnTimer);
+      warnTimer = setTimeout(() => setWarning(null), 2500);
+    };
+    setMusicMode('flight');
 
     const readInput = (): JourneyInput => {
       const k = keys.current;
@@ -157,26 +187,41 @@ export function Journey() {
           hoopHalfWidth: journeyConfig.hoop.halfWidth,
           targetDistance: level.targetDistance,
           levelId: level.id,
+          flameColor: setup.flameColor,
+          trail: setup.trail,
+          ghost: setup.ghost,
         });
         app.ticker.add((ticker) => {
           const frame = Math.min(ticker.deltaMS / 1000, 0.1);
           if (!pausedRef.current) {
-            let remaining = frame * timescale;
-            const input = readInput();
-            while (remaining > 1e-6 && stateRef.current.status !== 'ended') {
-              const dt = Math.min(remaining, MAX_STEP);
-              remaining -= dt;
-              const { state, events } = stepJourney(stateRef.current, input, dt, setup.ctx);
+            // Fixed steps with recorded input, so the leaderboard server can replay the flight exactly.
+            acc += frame * timescale;
+            const code = encodeInput(readInput());
+            const input = decodeInput(code);
+            while (acc >= FIXED_STEP && stateRef.current.status !== 'ended') {
+              acc -= FIXED_STEP;
+              const prevTime = stateRef.current.time;
+              const { state, events } = stepJourney(stateRef.current, input, FIXED_STEP, setup.ctx);
+              appendInput(log, code);
+              if (Math.floor(state.time / GHOST_INTERVAL) > Math.floor(prevTime / GHOST_INTERVAL) || prevTime === 0) {
+                track.push(Math.round(state.x * 10) / 10, Math.round(state.y * 10) / 10);
+              }
               stateRef.current = state;
               if (events.length) {
                 renderer!.handleEvents(events, state);
                 emit(events);
+                for (const e of events) {
+                  if (e.type === 'meteorShower') warn('☄️ Meteor shower ahead!');
+                  if (e.type === 'guardianDefeated') warn(`🏆 Guardian destroyed! +${journeyConfig.guardian.coinReward} coins`);
+                  if (e.type === 'fuelCan') warn('⛽ Fuel can! Tank refilled');
+                }
               }
             }
             if (stateRef.current.status === 'ended' && !finished) {
               endTimer += frame;
               if (endTimer > 1.4) {
                 finished = true;
+                stopEngineSound();
                 const s = stateRef.current;
                 finishFlight({
                   distance: journeyDistance(s),
@@ -184,6 +229,11 @@ export function Journey() {
                   endReason: s.endReason ?? 'aborted',
                   hoops: s.hoopsCollected,
                   destroyed: s.obstaclesDestroyed,
+                  coins: s.coins,
+                  fuelCans: s.fuelCans,
+                  guardianDefeated: s.guardianDefeated,
+                  replay: { seed: setup.ctx.seed, log, aborted: s.endReason === 'aborted' },
+                  track,
                 });
               }
             }
@@ -192,13 +242,19 @@ export function Journey() {
           hudTimer += frame;
           if (hudTimer > 0.08) {
             hudTimer = 0;
-            setHud(hudOf(stateRef.current, turboTotal));
+            const s = stateRef.current;
+            setHud(hudOf(s, turboTotal));
+            if (s.status === 'flying' && !pausedRef.current) setEngineSound(s.throttle, s.turboTime > 0 || s.hoopTime > 0);
+            else stopEngineSound();
           }
         });
       });
 
     return () => {
       disposed = true;
+      clearTimeout(warnTimer);
+      stopEngineSound();
+      setMusicMode('menu');
       renderer?.destroy();
       if (ready) app.destroy(true, { children: true });
     };
@@ -300,8 +356,15 @@ export function Journey() {
           </label>
           {stats.ammo > 0 && <span className="ammo">🔫 {hud.ammo}</span>}
           <span className="hoops">◎ {hud.hoops}</span>
+          <span className="coins" data-testid="hud-coins">🪙 {hud.coins}</span>
         </div>
       </div>
+      {hud.wind !== 0 && !hud.ended && (
+        <div className="wind-indicator" data-testid="wind">
+          {hud.wind > 0 ? 'Wind ➡️➡️' : '⬅️⬅️ Wind'}
+        </div>
+      )}
+      {warning && !hud.ended && <div className="banner warning">{warning}</div>}
       {hud.gliding && !hud.ended && <div className="banner">Out of fuel — gliding…</div>}
       {hud.ended && <div className="banner big">{stateRef.current.endReason === 'destroyed' ? '💥 Rocket destroyed' : 'Flight over'}</div>}
       {showHint && (

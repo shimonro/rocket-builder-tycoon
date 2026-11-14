@@ -72,6 +72,17 @@ describe('rocket', () => {
     expect(stats.mass).toBe(50);
   });
 
+  it('adds 10% per upgrade level to a part’s stats, but not its mass, capped at 3 levels', () => {
+    const parts = rocketParts(starter, catalog);
+    const plain = rocketStats(parts);
+    const upgraded = rocketStats(parts, { engine_sparrow_e1: 2 });
+    expect(upgraded.thrust).toBeCloseTo(plain.thrust * 1.2);
+    expect(upgraded.fuelCapacity).toBe(plain.fuelCapacity);
+    expect(upgraded.mass).toBe(plain.mass);
+    expect(rocketStats(parts, { engine_sparrow_e1: 9 }).thrust).toBeCloseTo(plain.thrust * 1.3);
+    expect(rocketStats(parts, { engine_sparrow_e1: -2 }).thrust).toBe(plain.thrust);
+  });
+
   it('applies rarity multipliers to every stat in the ranking', () => {
     // Riveted Hull is the uncommon (×1.25) twin of the Tin Can Hull: (30 + 6) × 1.25 = 45
     const stats = rocketStats(rocketParts({ body: 'body_riveted_hull' }, catalog));

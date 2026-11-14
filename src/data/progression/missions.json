@@ -1,0 +1,9 @@
+[
+  { "id": "fly_distance", "metric": "distance", "text": "Fly {n} m in total", "base": 2500, "perLevel": 1500, "gems": 5 },
+  { "id": "hoops", "metric": "hoops", "text": "Fly through {n} hoops", "base": 8, "perLevel": 2, "gems": 5 },
+  { "id": "coins", "metric": "coins", "text": "Collect {n} coins", "base": 25, "perLevel": 8, "gems": 5 },
+  { "id": "destroy", "metric": "destroyed", "text": "Blast {n} obstacles", "base": 6, "perLevel": 3, "gems": 6 },
+  { "id": "flights", "metric": "flights", "text": "Complete {n} flights", "base": 5, "perLevel": 0, "gems": 4 },
+  { "id": "targets", "metric": "targets", "text": "Reach the target line {n} times", "base": 2, "perLevel": 0, "gems": 7 },
+  { "id": "fuel_cans", "metric": "fuelCans", "text": "Grab {n} fuel cans", "base": 3, "perLevel": 0.5, "gems": 5 }
+]

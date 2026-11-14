@@ -1,0 +1,18 @@
+[
+  { "id": "first_flight", "name": "Liftoff", "description": "Complete your first flight.", "metric": "flights", "threshold": 1, "gems": 5 },
+  { "id": "frequent_flyer", "name": "Frequent Flyer", "description": "Fly 25 times.", "metric": "flights", "threshold": 25, "gems": 15 },
+  { "id": "veteran", "name": "Veteran Pilot", "description": "Fly 100 times.", "metric": "flights", "threshold": 100, "gems": 40 },
+  { "id": "distance_10k", "name": "Ten Klicks", "description": "Fly 10,000 m in total.", "metric": "totalDistance", "threshold": 10000, "gems": 10 },
+  { "id": "distance_100k", "name": "Long Hauler", "description": "Fly 100,000 m in total.", "metric": "totalDistance", "threshold": 100000, "gems": 30 },
+  { "id": "distance_1m", "name": "Million Meter Club", "description": "Fly 1,000,000 m in total.", "metric": "totalDistance", "threshold": 1000000, "gems": 80 },
+  { "id": "hoops_50", "name": "Ring Master", "description": "Fly through 50 hoops.", "metric": "hoops", "threshold": 50, "gems": 15 },
+  { "id": "blaster", "name": "Blaster", "description": "Destroy 50 obstacles.", "metric": "destroyed", "threshold": 50, "gems": 15 },
+  { "id": "coins_250", "name": "Coin Collector", "description": "Collect 250 coins.", "metric": "coins", "threshold": 250, "gems": 15 },
+  { "id": "guardian_slayer", "name": "Guardian Slayer", "description": "Destroy a finish-line guardian.", "metric": "guardians", "threshold": 1, "gems": 20 },
+  { "id": "complete_3", "name": "Orbital", "description": "Complete 3 levels.", "metric": "levelsCompleted", "threshold": 3, "gems": 15 },
+  { "id": "complete_6", "name": "Lunar", "description": "Complete 6 levels.", "metric": "levelsCompleted", "threshold": 6, "gems": 30 },
+  { "id": "complete_10", "name": "Deep Spacer", "description": "Complete all 10 levels.", "metric": "levelsCompleted", "threshold": 10, "gems": 100 },
+  { "id": "best_5k", "name": "High Flyer", "description": "Reach 5,000 m in one flight.", "metric": "bestDistance", "threshold": 5000, "gems": 20 },
+  { "id": "upgrader", "name": "Tinkerer", "description": "Buy 5 part upgrades.", "metric": "upgrades", "threshold": 5, "gems": 10 },
+  { "id": "stylist", "name": "Stylist", "description": "Own 3 cosmetics.", "metric": "cosmetics", "threshold": 3, "gems": 10 }
+]

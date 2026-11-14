@@ -9,6 +9,10 @@ export interface EconomyConfig {
   diminishingReturns: { fromTargetMultiple: number; rate: number }[];
   repeatCompletionBonusFactor: number;
   sellBackFactor: number;
+  /** Upgrade level n+1 costs part price × upgradeCostFactor × (n + 1). */
+  upgradeCostFactor: number;
+  /** Each collected coin pays coinValue × the level's payout multiplier, outside the soft cap. */
+  coinValue: number;
   shieldsAndWeaponsFromLevel: number;
 }
 
@@ -37,6 +41,7 @@ export interface PayoutInput {
   targetReached: boolean;
   /** True when this flight completes the level for the first time. */
   firstCompletion: boolean;
+  coins: number;
 }
 
 export interface PayoutBreakdown {
@@ -50,10 +55,12 @@ export interface PayoutBreakdown {
   distancePay: number;
   capped: boolean;
   completionBonus: number;
+  coins: number;
+  coinPay: number;
   total: number;
 }
 
-/** payout = min(effectiveDistance × payoutMultiplier × (1 + rankingBonus), softCap) + completion bonus */
+/** payout = min(effectiveDistance × payoutMultiplier × (1 + rankingBonus), softCap) + completion bonus + coin pay */
 export function computePayout(input: PayoutInput, cfg: EconomyConfig): PayoutBreakdown {
   const { level } = input;
   const distance = Math.max(0, Math.floor(input.distance));
@@ -65,6 +72,8 @@ export function computePayout(input: PayoutInput, cfg: EconomyConfig): PayoutBre
   const completionBonus = input.targetReached
     ? Math.round(level.completionBonus * (input.firstCompletion ? 1 : cfg.repeatCompletionBonusFactor))
     : 0;
+  const coins = Math.max(0, Math.floor(input.coins));
+  const coinPay = Math.round(coins * cfg.coinValue * level.payoutMultiplier);
   return {
     distance,
     effectiveDistance: effective,
@@ -75,6 +84,8 @@ export function computePayout(input: PayoutInput, cfg: EconomyConfig): PayoutBre
     distancePay,
     capped: uncappedPay > softCap,
     completionBonus,
-    total: distancePay + completionBonus,
+    coins,
+    coinPay,
+    total: distancePay + completionBonus + coinPay,
   };
 }
