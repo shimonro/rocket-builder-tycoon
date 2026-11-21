@@ -2,8 +2,9 @@
 
 Browser arcade-tycoon hybrid: buy rocket parts, assemble a rocket, fly it up through hazardous levels, earn money, upgrade, unlock the next level. Built from the design document v1.1.
 
-- **Play:** https://rocket-builder-tycoon.vercel.app (installable as an app; works offline as a guest)
-- **Code:** https://github.com/shimonro/rocket-builder-tycoon is the primary repository. Vercel deploys every push to `main`.
+- **Production:** https://rocket-builder-tycoon.vercel.app (branch `main`; installable as an app; works offline as a guest)
+- **QA:** https://rocket-builder-tycoon-qa.vercel.app (branch `dev`; Vercel login required)
+- **Code:** https://github.com/shimonro/rocket-builder-tycoon is the primary repository.
 
 ## Run it
 
@@ -73,16 +74,30 @@ Guest play works with no backend. For accounts, leaderboards and telemetry:
 1. Create a Supabase project and run the files in `supabase/migrations/` in order in its SQL editor.
 2. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (in `.env.local`, and in the Vercel project settings) and rebuild.
 3. Deploy the edge function: `SUPABASE_ACCESS_TOKEN=… SUPABASE_PROJECT_REF=… npm run deploy:functions`. CI does this on every push to `main` once the repository has a `SUPABASE_ACCESS_TOKEN` Actions secret (the project ref is in `.github/workflows/ci.yml`). The function must match the deployed client's flight rules; an outdated client is asked to reload.
-4. Keep-alive: Free projects pause after a quiet week. `keepalive()` (migration 0003) does a small write and reads; the Vercel cron calls it daily and `.github/workflows/keepalive.yml` every 6 hours. Supabase does not publish its exact activity rule, so this makes a pause unlikely but not impossible; only a paid plan guarantees it.
+4. Keep-alive: Free projects pause after a quiet week. `keepalive()` (migration 0003) does a small write and reads; the Vercel cron calls it daily on production and `.github/workflows/keepalive.yml` calls it on both projects every 6 hours. Supabase does not publish its exact activity rule, so this makes a pause unlikely but not impossible; only a paid plan guarantees it.
 5. Reports: the `analytics` schema has views `daily_sessions`, `tutorial_funnel`, `level_stats` and `recent_errors` (Supabase dashboard → SQL editor, e.g. `select * from analytics.level_stats`).
 
 Password-reset and confirmation emails use Supabase's built-in mailer, which only delivers to the project team's addresses and a few per hour. For real players, add a custom SMTP provider (e.g. Resend with a verified domain) under Authentication → Emails, then you can turn email confirmation back on.
 
 Vercel's Hobby plan is for non-commercial projects; move to Pro before adding ads or purchases.
 
-## Development workflow
+## Environments and promotion
 
-Work on `dev` (or a feature branch) and open a pull request to `main`; the CI check (lint, typecheck, coverage, build, e2e) runs on it and Vercel posts a preview URL. Merging deploys production. To enforce this, protect `main` in GitHub (Settings → Branches → Add rule: require a pull request and the `check` status).
+| | QA | Production |
+| --- | --- | --- |
+| Branch | `dev` | `main` |
+| URL | https://rocket-builder-tycoon-qa.vercel.app | https://rocket-builder-tycoon.vercel.app |
+| Supabase project | `rocket-builder-tycoon-qa` (`xcjjnkzrnmsljixwfhtz`) | `rocket-builder-tycoon` (`mauusienlfbrzwnbvzru`) |
+| Vercel env vars | Preview + Development targets | Production target |
+| Access | Vercel login (deployment protection) | Public |
+
+QA has its own accounts, saves, leaderboards and telemetry, so testing never touches real players. Pull request previews (and local `.env.local`) use the QA project too.
+
+1. Push to `dev` (directly or by merging a feature branch). CI runs and Vercel deploys QA.
+2. Test on the QA URL.
+3. Promote: open a pull request from `dev` to `main` (https://github.com/shimonro/rocket-builder-tycoon/compare/main...dev?expand=1), wait for the green `check`, and merge. Vercel deploys production.
+
+Database changes go in `supabase/migrations/`; apply each new file to QA first, then to production before promoting. Edge functions deploy from CI to the matching project once the `SUPABASE_ACCESS_TOKEN` secret exists. To enforce the flow, protect `main` in GitHub (Settings → Branches → Add rule: require a pull request and the `check` status).
 
 ## Design interpretations
 
