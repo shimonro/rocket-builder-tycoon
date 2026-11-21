@@ -58,7 +58,7 @@ src/
   services/    persistence (localStorage guest, Supabase cloud, ghosts), audio, telemetry
   state/       Zustand store wiring the engines together; save/auth/leaderboard session
   ui/          React screens + components, PixiJS flight renderer, shared SVG rocket art
-api/           Vercel function: daily keep-alive ping so the free Supabase project is never paused
+api/           Vercel function: daily keep-alive (with a 6-hourly GitHub Actions backup) so the free Supabase project is not paused
 e2e/           Playwright specs, with an in-memory Supabase mock
 supabase/      SQL migrations and the submit-run edge function
 scripts/       edge function bundler/deployer
@@ -73,7 +73,8 @@ Guest play works with no backend. For accounts, leaderboards and telemetry:
 1. Create a Supabase project and run the files in `supabase/migrations/` in order in its SQL editor.
 2. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (in `.env.local`, and in the Vercel project settings) and rebuild.
 3. Deploy the edge function: `SUPABASE_ACCESS_TOKEN=… SUPABASE_PROJECT_REF=… npm run deploy:functions`. CI does this on every push to `main` once the repository has a `SUPABASE_ACCESS_TOKEN` Actions secret (the project ref is in `.github/workflows/ci.yml`). The function must match the deployed client's flight rules; an outdated client is asked to reload.
-4. Reports: the `analytics` schema has views `daily_sessions`, `tutorial_funnel`, `level_stats` and `recent_errors` (Supabase dashboard → SQL editor, e.g. `select * from analytics.level_stats`).
+4. Keep-alive: Free projects pause after a quiet week. `keepalive()` (migration 0003) does a small write and reads; the Vercel cron calls it daily and `.github/workflows/keepalive.yml` every 6 hours. Supabase does not publish its exact activity rule, so this makes a pause unlikely but not impossible; only a paid plan guarantees it.
+5. Reports: the `analytics` schema has views `daily_sessions`, `tutorial_funnel`, `level_stats` and `recent_errors` (Supabase dashboard → SQL editor, e.g. `select * from analytics.level_stats`).
 
 Password-reset and confirmation emails use Supabase's built-in mailer, which only delivers to the project team's addresses and a few per hour. For real players, add a custom SMTP provider (e.g. Resend with a verified domain) under Authentication → Emails, then you can turn email confirmation back on.
 
