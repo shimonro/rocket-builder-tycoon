@@ -24,6 +24,7 @@
   "obstacleScalePerLevel": 0.12,
   "coins": { "rowsPer100m": 0.6, "rowSize": 5, "spacing": 3.2, "radius": 1.2 },
   "fuelCan": { "chance": 0.12, "refill": 0.2, "radius": 1.5 },
+  "gem": { "chance": 0.05, "radius": 1.4 },
   "wind": { "fromLevel": 3, "chance": 0.2, "force": [6, 12], "height": [40, 90] },
   "meteorShower": { "fromLevel": 4, "chance": 0.15, "count": 7, "speed": [10, 18] },
   "guardian": { "fromLevel": 2, "coinReward": 15, "offset": 10 },

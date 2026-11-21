@@ -4,6 +4,9 @@ import { advanceTutorial, isAllowed, isTutorialActive, TUTORIAL_MESSAGES, TUTORI
 
 const PLAYTHROUGH = [
   'next',
+  'next',
+  'next',
+  'next',
   'buy:body_tin_can_hull',
   'buy:fuel_tank_jerrycan_tank',
   'buy:engine_sparrow_e1',
@@ -13,6 +16,7 @@ const PLAYTHROUGH = [
   'equip:fuel_tank_jerrycan_tank',
   'equip:engine_sparrow_e1',
   'equip:fins_stub_fins',
+  'next',
   'launch',
   'flight:end',
   'continue',

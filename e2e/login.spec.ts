@@ -9,10 +9,12 @@ test.beforeEach(async ({ page }) => {
   await mock.install(page);
 });
 
-async function logIn(page: Page, email: string, password: string, button: 'Log in' | 'Register' = 'Log in') {
+async function logIn(page: Page, email: string, password: string, mode: 'login' | 'register' = 'login') {
+  await page.getByTestId(`mode-${mode}`).click();
   await page.getByPlaceholder('Email').fill(email);
   await page.getByPlaceholder(/^Password/).fill(password);
-  await page.getByRole('button', { name: button }).click();
+  if (mode === 'register') await page.getByTestId('confirm-password').fill(password);
+  await page.getByTestId(`${mode}-submit`).click();
 }
 
 function seedGuest(page: Page, save: object) {
@@ -27,7 +29,7 @@ function seedGuest(page: Page, save: object) {
 test('registering imports guest progress, saves it to the cloud and restores it on the next login', async ({ page }) => {
   await seedGuest(page, veteranSave({ cash: 4321 }));
   await page.goto('/');
-  await logIn(page, 'pilot@example.com', 'secret-123', 'Register');
+  await logIn(page, 'pilot@example.com', 'secret-123', 'register');
   await page.getByRole('button', { name: 'Yes, import it' }).click();
   await expect(page.getByTestId('launch')).toBeVisible();
   expect(await cash(page)).toBe(4321);
@@ -52,6 +54,36 @@ test('a wrong password shows the error and keeps the player on the title screen'
   await logIn(page, 'pilot@example.com', 'wrong-pass');
   await expect(page.getByText('Invalid login credentials')).toBeVisible();
   await expect(page.getByTestId('play-guest')).toBeVisible();
+});
+
+test('creating an account explains what is wrong instead of silently doing nothing', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('mode-register').click();
+  const submit = page.getByTestId('register-submit');
+  await expect(submit).toBeEnabled();
+  await submit.click();
+  await expect(page.getByTestId('email-error')).toBeVisible();
+  await expect(page.getByTestId('password-error')).toContainText('6 characters');
+
+  await page.getByPlaceholder('Email').fill('pilot@example.com');
+  await page.getByPlaceholder(/^Password/).fill('secret-123');
+  await page.getByTestId('confirm-password').fill('secret-124');
+  await expect(page.getByTestId('email-error')).toHaveCount(0);
+  await expect(page.getByTestId('password-error')).toHaveCount(0);
+  await submit.click();
+  await expect(page.getByTestId('confirm-error')).toContainText('match');
+  expect(mock.users).toHaveLength(0);
+
+  // An email that already has an account shows the server's answer and a way to log in.
+  mock.users.push({ id: crypto.randomUUID(), email: 'pilot@example.com', password: 'secret-123' });
+  await page.getByTestId('confirm-password').fill('secret-123');
+  await submit.click();
+  await expect(page.getByTestId('auth-error')).toContainText('already registered');
+  await page.getByRole('button', { name: 'Log in instead' }).click();
+  await expect(page.getByTestId('login-submit')).toBeVisible();
+  await page.getByPlaceholder(/^Password/).fill('secret-123');
+  await page.getByTestId('login-submit').click();
+  await expect(page.getByTestId('launch')).toBeVisible();
 });
 
 test('progress saved on another device triggers a conflict choice', async ({ page }) => {

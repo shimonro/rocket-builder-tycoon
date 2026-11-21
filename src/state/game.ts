@@ -2,8 +2,9 @@ import { create } from 'zustand';
 import { createEventBus, type GameEvent } from '../core/events';
 import type { Category } from '../core/parts/parts';
 import { isLaunchable } from '../core/rocket/rocket';
-import { achievements, catalog, cosmetics, economy, missionTemplates, MISSIONS_PER_DAY, prebuilts, tutorialScript } from '../data';
-import { equip, equipAll, unequip } from '../engines/builder/builder';
+import { achievements, catalog, cosmetics, economy, levels, missionTemplates, MISSIONS_PER_DAY, prebuilts, tutorialScript } from '../data';
+import { addBay, bayPrice, emptyBay, equip, equipAll, renameRocket, switchRocket, unequip, type Garage } from '../engines/builder/builder';
+import type { JourneyContext } from '../engines/journey/journey';
 import { computePayout, type PayoutBreakdown } from '../engines/levels/economy';
 import { highestUnlocked, recordFlight, unlockLevel } from '../engines/levels/levels';
 import {
@@ -17,10 +18,10 @@ import {
 } from '../engines/progression/progression';
 import { buyPart, buyPrebuilt, sellPart, upgradePart, type ShopError } from '../engines/shop/shop';
 import { advanceTutorial, type TutorialAction } from '../engines/tutorial/tutorial';
-import { defaultSave, type SaveData, type Settings } from '../services/persistence/save';
+import { defaultSave, enterGodMode, exitGodMode, type SaveData, type Settings } from '../services/persistence/save';
 import { allowed, levelById, ownsPart, progressSnapshot, rocketRanking, shopAccess, today, tutorialDone } from './selectors';
 
-export type Screen = 'entrance' | 'hangar' | 'shop' | 'levels' | 'missions' | 'journey' | 'results' | 'settings';
+export type Screen = 'entrance' | 'hangar' | 'shop' | 'levels' | 'missions' | 'journey' | 'results' | 'settings' | 'profile' | 'replay';
 export const NAV_SCREENS: Screen[] = ['hangar', 'shop', 'levels', 'missions', 'settings'];
 
 export interface FlightOutcome {
@@ -31,7 +32,11 @@ export interface FlightOutcome {
   destroyed: number;
   coins: number;
   fuelCans: number;
+  /** Gems caught in flight; they go straight to the wallet. */
+  gems: number;
   guardianDefeated: boolean;
+  /** The flight's simulation setup, kept so the run can be watched again from the results. */
+  context?: JourneyContext;
   /** Recorded inputs, for leaderboard verification. */
   replay?: { seed: number; log: number[]; aborted: boolean };
   /** Rocket positions every GHOST_INTERVAL seconds, flattened [x, y, x, y, …]. */
@@ -57,6 +62,10 @@ export interface GameStore {
   flightNumber: number;
   /** Random seed of the current flight's sky layout. */
   flightSeed: number;
+  /** Stop of the replayable guided tour, or null when it is not running. */
+  tour: number | null;
+  /** The next flight pauses to introduce hoops, obstacles and pickups (tutorial replay). */
+  flightIntros: boolean;
   loadSave(save: SaveData): void;
   tutorialNext(): void;
   navigate(screen: Screen): void;
@@ -78,6 +87,14 @@ export interface GameStore {
   claimMission(id: string): void;
   skipTutorial(): void;
   markTip(id: string): void;
+  buyBay(): void;
+  switchRocket(index: number): void;
+  renameRocket(index: number, name: string): void;
+  /** QA only: endless cash and gems with everything open; switching off restores the earlier save. */
+  toggleGodMode(): void;
+  setTour(stop: number | null): void;
+  startReplay(): void;
+  endReplay(): void;
 }
 
 /** Game-wide events for audio and effects. */
@@ -114,6 +131,9 @@ function withMissions(save: SaveData): SaveData {
   return missions === save.missions ? save : { ...save, missions };
 }
 
+const garageOf = (save: SaveData): Garage => ({ rocket: save.rocket, fleet: save.fleet, active: save.activeRocket });
+const withGarage = (save: SaveData, garage: Garage): SaveData => ({ ...save, rocket: garage.rocket, fleet: garage.fleet, activeRocket: garage.active });
+
 const achievementNotice = (earned: Achievement[]) =>
   earned.map((a) => `🏆 ${a.name} (+${a.gems} 💎)`).join(' · ');
 
@@ -142,13 +162,16 @@ export const useGame = create<GameStore>()((set, get) => {
     notice: null,
     flightNumber: 0,
     flightSeed: 1,
+    tour: null,
+    flightIntros: false,
 
     loadSave(save) {
-      set({ save: withMissions(save), screen: 'hangar', lastResult: null, notice: null });
+      set({ save: withMissions(save), screen: 'hangar', lastResult: null, notice: null, tour: null, flightIntros: false });
     },
 
     tutorialNext() {
-      act('next', (s) => s, { screen: 'shop' });
+      act('next', (s) => s);
+      if (get().save.tutorialStep === 'buy_body') set({ screen: 'shop' });
     },
 
     navigate(screen) {
@@ -168,13 +191,18 @@ export const useGame = create<GameStore>()((set, get) => {
       const prebuilt = prebuilts.find((p) => p.id === prebuiltId);
       if (!prebuilt) return;
       act(`buyPrebuilt:${prebuiltId}`, (s) => {
+        // A prebuilt rocket needs a hangar bay of its own.
+        const bay = emptyBay(garageOf(s));
+        if (bay === null) return fail('No free hangar bay. Buy another bay in the Hangar, or strip a rocket to free its bay.');
         const r = buyPrebuilt({ cash: s.cash, inventory: s.inventory }, prebuilt, shopAccess(s));
         if (!r.ok) return fail(SHOP_ERRORS[r.error]);
-        const equipped = equipAll({ rocket: s.rocket, inventory: r.wallet.inventory }, prebuilt.parts, catalog);
+        const parked = switchRocket(garageOf(s), bay);
+        const equipped = equipAll({ rocket: parked.rocket, inventory: r.wallet.inventory }, prebuilt.parts, catalog);
         if (!equipped.ok) return fail('Could not assemble the prebuilt.');
         gameEvents.emit({ type: 'purchase', itemId: prebuiltId });
-        set({ notice: `${prebuilt.name} is assembled and ready to launch!` });
-        return { ...s, cash: r.wallet.cash, ...equipped.hangar };
+        set({ notice: `${prebuilt.name} is assembled in bay ${bay + 1} and ready to launch!` });
+        const garage = renameRocket({ ...parked, rocket: equipped.hangar.rocket }, bay, prebuilt.name);
+        return { ...withGarage(s, garage), cash: r.wallet.cash, inventory: equipped.hangar.inventory };
       });
     },
 
@@ -197,7 +225,11 @@ export const useGame = create<GameStore>()((set, get) => {
     },
 
     unequip(category) {
-      act(`unequip:${category}`, (s) => ({ ...s, ...unequip({ rocket: s.rocket, inventory: s.inventory }, category) }));
+      act(`unequip:${category}`, (s) => {
+        if (s.rocket[category] === undefined) return null;
+        gameEvents.emit({ type: 'equip', partId: `unequip:${category}` });
+        return { ...s, ...unequip({ rocket: s.rocket, inventory: s.inventory }, category) };
+      });
     },
 
     selectLevel(levelId) {
@@ -221,7 +253,7 @@ export const useGame = create<GameStore>()((set, get) => {
         return;
       }
       if (!save.progress.unlocked.includes(save.selectedLevel)) return;
-      if (act('launch', (s) => s, { screen: 'journey', flightNumber: get().flightNumber + 1, flightSeed: Math.floor(Math.random() * 2 ** 31), notice: null })) {
+      if (act('launch', (s) => s, { screen: 'journey', flightNumber: get().flightNumber + 1, flightSeed: Math.floor(Math.random() * 2 ** 31), notice: null, tour: null })) {
         gameEvents.emit({ type: 'launch', levelId: save.selectedLevel });
       }
     },
@@ -258,6 +290,7 @@ export const useGame = create<GameStore>()((set, get) => {
       const { save: next, earned } = withAchievements({
         ...save,
         cash: save.cash + payout.total,
+        gems: save.gems + outcome.gems,
         progress: recordFlight(save.progress, level.id, distance, outcome.targetReached),
         stats: {
           flights: stats.flights + 1,
@@ -268,6 +301,7 @@ export const useGame = create<GameStore>()((set, get) => {
           coins: stats.coins + outcome.coins,
           guardians: stats.guardians + (outcome.guardianDefeated ? 1 : 0),
           fuelCans: stats.fuelCans + outcome.fuelCans,
+          gemsFound: stats.gemsFound + outcome.gems,
         },
         missions,
         tutorialStep: advanceTutorial(save.tutorialStep, 'flight:end', tutorialScript),
@@ -283,7 +317,7 @@ export const useGame = create<GameStore>()((set, get) => {
       };
       gameEvents.emit({ type: 'payout', amount: payout.total });
       gameEvents.emit({ type: 'flightFinished', levelId: level.id, distance, reason: outcome.endReason, targetReached: outcome.targetReached });
-      set({ screen: 'results', lastResult: result, save: { ...withMissions(next), updatedAt: Date.now() } });
+      set({ screen: 'results', lastResult: result, flightIntros: false, save: { ...withMissions(next), updatedAt: Date.now() } });
     },
 
     continueFromResults(next) {
@@ -356,6 +390,56 @@ export const useGame = create<GameStore>()((set, get) => {
       const { save } = get();
       if (save.tips.includes(id)) return;
       set({ save: { ...save, tips: [...save.tips, id], updatedAt: Date.now() } });
+    },
+
+    buyBay() {
+      act('buyBay', (s) => {
+        const price = bayPrice(s.fleet.length, economy.bayPrices);
+        if (price === null) return fail('Every hangar bay is already built.');
+        if (s.cash < price) return fail(SHOP_ERRORS.insufficient_funds);
+        gameEvents.emit({ type: 'purchase', itemId: 'bay' });
+        set({ notice: `Hangar bay ${s.fleet.length + 1} built!` });
+        return { ...withGarage(s, addBay(garageOf(s), `Rocket ${s.fleet.length + 1}`)), cash: s.cash - price };
+      });
+    },
+
+    switchRocket(index) {
+      act(`rocket:${index}`, (s) => {
+        const current = garageOf(s);
+        const garage = switchRocket(current, index);
+        if (garage === current) return null;
+        gameEvents.emit({ type: 'equip', partId: `rocket:${index}` });
+        return withGarage(s, garage);
+      });
+    },
+
+    renameRocket(index, name) {
+      act(`rename:${index}`, (s) => {
+        const garage = renameRocket(garageOf(s), index, name);
+        return garage.fleet === s.fleet ? null : withGarage(s, garage);
+      });
+    },
+
+    toggleGodMode() {
+      const { save } = get();
+      const next = save.godBackup ? exitGodMode(save) : enterGodMode(save, levels.map((l) => l.id));
+      set({
+        save: { ...withMissions(next), updatedAt: Date.now() },
+        notice: save.godBackup ? 'God mode off: your earlier progress is back.' : 'God mode on: endless cash and gems, everything unlocked.',
+      });
+    },
+
+    setTour(stop) {
+      set(stop === null ? { tour: null } : { tour: stop, flightIntros: true });
+    },
+
+    startReplay() {
+      const { lastResult, screen } = get();
+      if (screen === 'results' && lastResult?.replay && lastResult.context) set({ screen: 'replay' });
+    },
+
+    endReplay() {
+      if (get().screen === 'replay') set({ screen: 'results' });
     },
   };
 });

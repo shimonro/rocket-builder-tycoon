@@ -8,6 +8,7 @@ export interface ProgressSnapshot {
   destroyed: number;
   coins: number;
   guardians: number;
+  gemsFound: number;
   levelsCompleted: number;
   highestUnlocked: number;
   bestDistance: number;
@@ -104,10 +105,10 @@ export function claimMission(missions: DailyMissions, id: string): { missions: D
   return { missions: { ...missions, list: missions.list.map((m) => (m === mission ? { ...m, claimed: true } : m)) }, gems: mission.gems };
 }
 
-export const COSMETIC_TYPES = ['paint', 'flame', 'trail'] as const;
+export const COSMETIC_TYPES = ['paint', 'flame', 'trail', 'decal'] as const;
 export type CosmeticType = (typeof COSMETIC_TYPES)[number];
 
-/** Cosmetics only change how the rocket looks; they never affect stats. */
+/** Cosmetics only change how the rocket looks; they never affect stats. Decals are drawn by id. */
 export interface Cosmetic {
   id: string;
   type: CosmeticType;

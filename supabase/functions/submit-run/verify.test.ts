@@ -60,6 +60,7 @@ describe('verifyRun', () => {
     ['no cloud save', run, null, 403],
     ['a locked level', run, { ...save, progress: { ...save.progress, unlocked: [1] } }, 403],
     ['an unfinished tutorial', run, { ...save, tutorialStep: 'launch' as const }, 403],
+    ['a save in god mode', run, { ...save, godBackup: save }, 403],
     ['an incomplete rocket', run, { ...save, rocket: { body: rocket.body } }, 403],
     ['an unknown part', run, { ...save, rocket: { ...rocket, weapon: 'laser_9000' } }, 403],
     ['a part above the level cap', run, { ...save, rocket: { ...rocket, engine: 'engine_helios_e4' } }, 403],

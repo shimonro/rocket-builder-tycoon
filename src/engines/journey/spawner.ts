@@ -37,7 +37,7 @@ export interface Hoop {
 
 export interface Pickup {
   id: number;
-  kind: 'coin' | 'fuel';
+  kind: 'coin' | 'fuel' | 'gem';
   x: number;
   y: number;
 }
@@ -139,7 +139,7 @@ export function generateChunk(
     winds.push({ id: nextId++, y0: start, y1: start + height, force: between(cfg.wind.force, rng) * (rng() < 0.5 ? -1 : 1) });
   }
 
-  // Coins come in short vertical trails that weave a little; fuel cans are rare.
+  // Coins come in short vertical trails that weave a little; fuel cans are rare and gems rarer still.
   const pickups: Pickup[] = [];
   const rows = countFor(cfg.coins.rowsPer100m, cfg.chunkSize, rng);
   for (let row = 0; row < rows; row++) {
@@ -152,6 +152,9 @@ export function generateChunk(
   }
   if (rng() < cfg.fuelCan.chance) {
     pickups.push({ id: nextId++, kind: 'fuel', x: 3 + rng() * (cfg.worldWidth - 6), y: y0 + rng() * cfg.chunkSize });
+  }
+  if (rng() < cfg.gem.chance * densityFactor) {
+    pickups.push({ id: nextId++, kind: 'gem', x: 3 + rng() * (cfg.worldWidth - 6), y: y0 + rng() * cfg.chunkSize });
   }
 
   return { obstacles, hoops, pickups, winds, shower, nextId };

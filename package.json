@@ -1,6 +1,6 @@
 {
   "name": "rocket-builder-tycoon",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Browser arcade-tycoon hybrid: buy parts, build a rocket, fly it as far as you can.",

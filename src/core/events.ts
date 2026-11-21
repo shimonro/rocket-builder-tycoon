@@ -16,6 +16,8 @@ export type GameEvent =
   | { type: 'upgrade'; partId: string }
   | { type: 'coin' }
   | { type: 'fuelCan' }
+  | { type: 'gem' }
+  | { type: 'celebrate' }
   | { type: 'meteorShower' }
   | { type: 'guardianDefeated' }
   | { type: 'flightFinished'; levelId: number; distance: number; reason: string; targetReached: boolean }

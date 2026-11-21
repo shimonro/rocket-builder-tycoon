@@ -19,7 +19,7 @@ import {
 
 const templates = missionsJson as MissionTemplate[];
 const zero: ProgressSnapshot = {
-  flights: 0, totalDistance: 0, hoops: 0, destroyed: 0, coins: 0, guardians: 0,
+  flights: 0, totalDistance: 0, hoops: 0, destroyed: 0, coins: 0, guardians: 0, gemsFound: 0,
   levelsCompleted: 0, highestUnlocked: 1, bestDistance: 0, upgrades: 0, cosmetics: 0,
 };
 const flight: FlightSummary = { distance: 0, hoops: 0, destroyed: 0, coins: 0, flights: 0, targets: 0, fuelCans: 0 };

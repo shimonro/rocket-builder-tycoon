@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CATEGORIES, parseCatalog, parsePrebuilts } from '../../core/parts/parts';
 import catalogJson from '../../data/parts/catalog.json';
 import prebuiltsJson from '../../data/parts/prebuilts.json';
-import { buyPart, buyPrebuilt, listParts, partLock, sellPart, sellPrice, upgradeCost, upgradePart, type ShopAccess } from './shop';
+import { buyPart, buyPrebuilt, listParts, partLock, rarityFromLevel, sellPart, sellPrice, sortParts, upgradeCost, upgradePart, type ShopAccess } from './shop';
 
 const catalog = parseCatalog(catalogJson);
 const prebuilts = parsePrebuilts(prebuiltsJson, catalog);
@@ -107,5 +107,37 @@ describe('listParts', () => {
   it('filters by category and rarity', () => {
     const fins = listParts(catalog, CATEGORIES, { category: 'fins', rarity: 'legendary' });
     expect(fins.map((p) => p.name)).toEqual(['Aether Wings', 'Nova Wings']);
+  });
+});
+
+describe('sortParts', () => {
+  const pick = (...ids: string[]) => ids.map((id) => catalog.get(id)!);
+  // Riveted: $240 uncommon; Tin Can: $150 common; Carbon: $860 rare.
+  const parts = pick('body_riveted_hull', 'body_tin_can_hull', 'body_carbon_shell');
+  const gain: Record<string, number> = { body_riveted_hull: 5, body_tin_can_hull: -3, body_carbon_shell: 2 };
+  const by = (sort: Parameters<typeof sortParts>[1]) => sortParts(parts, sort, (p) => gain[p.id]).map((p) => p.id);
+
+  it('orders by price either way, ranking gain, or rarity, and keeps the list order by default', () => {
+    expect(by('price_asc')).toEqual(['body_tin_can_hull', 'body_riveted_hull', 'body_carbon_shell']);
+    expect(by('price_desc')).toEqual(['body_carbon_shell', 'body_riveted_hull', 'body_tin_can_hull']);
+    expect(by('ranking')).toEqual(['body_riveted_hull', 'body_carbon_shell', 'body_tin_can_hull']);
+    expect(by('rarity')).toEqual(['body_carbon_shell', 'body_riveted_hull', 'body_tin_can_hull']);
+    expect(by('default')).toEqual(['body_riveted_hull', 'body_tin_can_hull', 'body_carbon_shell']);
+  });
+
+  it('does not reorder the input list', () => {
+    by('price_asc');
+    expect(parts[0].id).toBe('body_riveted_hull');
+  });
+});
+
+describe('rarityFromLevel', () => {
+  it('names the first game level whose shop sells a rarity', () => {
+    expect(rarityFromLevel(catalog, 'common')).toBe(1);
+    // Rare parts start at part level 2 (game level 3), epic at 3 (level 5), legendary at 4 (level 7).
+    expect(rarityFromLevel(catalog, 'rare')).toBe(3);
+    expect(rarityFromLevel(catalog, 'epic')).toBe(5);
+    expect(rarityFromLevel(catalog, 'legendary')).toBe(7);
+    expect(rarityFromLevel(new Map(), 'epic')).toBeNull();
   });
 });

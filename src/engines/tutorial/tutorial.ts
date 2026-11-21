@@ -1,5 +1,8 @@
 export const TUTORIAL_STEPS = [
   'welcome',
+  'tour_cash',
+  'tour_ranking',
+  'tour_gems',
   'buy_body',
   'buy_fuel_tank',
   'buy_engine',
@@ -9,6 +12,7 @@ export const TUTORIAL_STEPS = [
   'equip_fuel_tank',
   'equip_engine',
   'equip_fins',
+  'tour_stats',
   'launch',
   'flight',
   'results',
@@ -34,6 +38,10 @@ export type TutorialAction = string;
 export function expectedAction(step: TutorialStep, script: TutorialScript): TutorialAction | null {
   switch (step) {
     case 'welcome':
+    case 'tour_cash':
+    case 'tour_ranking':
+    case 'tour_gems':
+    case 'tour_stats':
       return 'next';
     case 'buy_body':
     case 'buy_fuel_tank':
@@ -73,7 +81,10 @@ export function advanceTutorial(step: TutorialStep, action: TutorialAction, scri
 }
 
 export const TUTORIAL_MESSAGES: Record<TutorialStep, string> = {
-  welcome: 'Welcome, Commander! You have $600 to build your first rocket. Let’s go shopping.',
+  welcome: 'Welcome, Commander! Let’s build your first rocket and fly it.',
+  tour_cash: 'Your cash 💵: flights earn it, parts cost it.',
+  tour_ranking: 'Your ranking ★ shows how strong your rocket is; new levels need a minimum.',
+  tour_gems: 'Gems 💎 come from missions, achievements and flights, and buy looks like paints and flags.',
   buy_body: 'Every rocket starts with a body. Buy the highlighted Tin Can Hull.',
   buy_fuel_tank: 'Now a fuel tank — no fuel, no flight. Buy the Jerrycan Tank.',
   buy_engine: 'An engine gives you thrust. Buy the Sparrow E1.',
@@ -83,6 +94,7 @@ export const TUTORIAL_MESSAGES: Record<TutorialStep, string> = {
   equip_fuel_tank: 'Mount the Jerrycan Tank.',
   equip_engine: 'Mount the Sparrow E1.',
   equip_fins: 'Mount the Stub Fins. Watch your ranking grow!',
+  tour_stats: 'Your stats come from your parts: thrust = speed, fuel = range, handling = steering, hull = toughness.',
   launch: 'Your rocket is ready. Launch!',
   flight:
     'Steer with ← → (or drag). ↑ goes faster, ↓ brakes. Space = Turbo. Fly through hoops for a free boost and dodge asteroids!',

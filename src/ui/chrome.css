@@ -1,0 +1,568 @@
+/*
+ * App chrome: top bar extras, coach spotlight, game guide, login tabs, profile and results extras.
+ * This file loads before styles.css, so overrides of styles.css rules use an extra `.app` for specificity.
+ */
+
+.app-replay main {
+  position: fixed;
+  inset: 0;
+}
+
+/* Top bar */
+.app .topbar {
+  gap: 10px;
+}
+
+.app .nav-btn {
+  white-space: nowrap;
+}
+
+.app .topbar.god {
+  border-bottom-color: #f59e0b;
+  box-shadow: 0 2px 18px #f59e0b33;
+}
+
+.topbar-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.env-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.05;
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.env-badge b {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+}
+
+.env-badge small {
+  font-size: 0.62rem;
+  opacity: 0.85;
+}
+
+.env-badge.env-qa {
+  color: #fcd34d;
+  border-color: #b45309;
+  background: #3a2405;
+}
+
+.env-badge.env-dev {
+  color: #cbd5e1;
+  border-color: #475569;
+  background: #1e293b;
+}
+
+.app .btn.god-toggle {
+  min-height: 40px;
+  min-width: 40px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.app .btn.god-toggle.on {
+  color: #1a1002;
+  font-weight: 800;
+  border-color: #fde68a;
+  background: linear-gradient(90deg, #f59e0b, #facc15, #f59e0b);
+  background-size: 200% 100%;
+  animation: god-shine 2.5s linear infinite;
+}
+
+@keyframes god-shine {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app .btn.icon-btn {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 6px;
+  line-height: 1;
+}
+
+.app .btn.profile-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  max-width: 170px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+}
+
+.app .btn.profile-btn.active {
+  border-color: var(--accent);
+  background: #0c2a44;
+}
+
+.profile-btn > span:first-child {
+  font-size: 1.2rem;
+}
+
+.profile-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-break {
+  display: none;
+}
+
+@media (max-width: 1500px) {
+  .app .brand-name {
+    display: none;
+  }
+}
+
+@media (max-width: 1300px) {
+  .app .nav-btn {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 1240px) {
+  .app .nav-label,
+  .app .god-label {
+    display: none;
+  }
+
+  .app .btn.god-toggle.on .god-label {
+    display: inline;
+  }
+}
+
+@media (max-width: 960px) {
+  .app .profile-name {
+    display: none;
+  }
+
+  .app .btn.profile-btn {
+    padding: 6px;
+    min-width: 40px;
+    justify-content: center;
+  }
+}
+
+/* Phones and narrow tablets: two rows, navigation and buttons on top, badges and wallet below. */
+@media (max-width: 860px) {
+  .app .brand {
+    display: none;
+  }
+
+  .app .topbar {
+    padding: 8px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .app .nav {
+    order: 1;
+    flex: 1;
+    justify-content: flex-start;
+    gap: 4px;
+  }
+
+  .app .nav-btn {
+    padding: 6px 9px;
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  .topbar-actions {
+    order: 2;
+  }
+
+  .topbar-break {
+    display: block;
+    order: 3;
+    flex-basis: 100%;
+    height: 0;
+  }
+
+  .topbar-meta {
+    order: 4;
+    gap: 4px;
+  }
+
+  .app .topbar .wallet {
+    order: 5;
+    width: auto;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .app .topbar-meta ~ .wallet {
+    justify-content: flex-end;
+  }
+
+  .env-badge {
+    padding: 2px 6px;
+  }
+
+  .env-badge small {
+    font-size: 0.56rem;
+  }
+}
+
+/* Tutorial coach: always visible right below the top bar, also on phones. */
+.app .coach.guide {
+  position: sticky;
+  top: var(--topbar-h, 66px);
+}
+
+.coach-step {
+  color: #fcd34d;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+@media (max-width: 680px) {
+  .app .coach.guide {
+    top: var(--topbar-h, 109px);
+    margin-top: 6px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .app .coach.guide p {
+    font-size: 0.92rem;
+    flex: 1 1 calc(100% - 48px);
+  }
+
+  .app .coach.guide .coach-actions {
+    flex: 1 1 100%;
+  }
+
+  .app .coach.guide .coach-actions .btn {
+    min-height: 40px;
+    padding: 6px 14px;
+  }
+
+  .app .coach.guide .coach-avatar {
+    font-size: 1.4rem;
+  }
+}
+
+.spot-ring {
+  position: fixed;
+  z-index: 40;
+  pointer-events: none;
+  border: 3px solid #fbbf24;
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 4px #fbbf2433,
+    0 0 26px 6px #fbbf2466;
+  animation: spot-pulse 1.3s ease-in-out infinite;
+}
+
+@keyframes spot-pulse {
+  50% {
+    box-shadow:
+      0 0 0 8px #fbbf2422,
+      0 0 40px 12px #fbbf2488;
+  }
+}
+
+.spot-arrow {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 40;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.spot-arrow > path {
+  fill: none;
+  stroke: #fbbf24;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 7 6;
+  animation: spot-dash 0.8s linear infinite;
+  filter: drop-shadow(0 0 4px #fbbf24aa);
+}
+
+@keyframes spot-dash {
+  to {
+    stroke-dashoffset: -13;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spot-ring,
+  .spot-arrow > path,
+  .app .btn.god-toggle.on {
+    animation: none;
+  }
+}
+
+/* Game guide */
+.modal.guide-modal {
+  width: min(560px, 100%);
+  max-height: min(86vh, 900px);
+  overflow-y: auto;
+  text-align: left;
+  gap: 4px;
+}
+
+.guide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: -20px;
+  margin: -20px -20px 0;
+  padding: 14px 20px 8px;
+  background: var(--panel);
+  z-index: 1;
+}
+
+.guide-head h2 {
+  margin: 0;
+}
+
+.guide-modal section {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.guide-modal h3 {
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+.guide-modal p,
+.guide-modal li {
+  color: #c3cdee;
+  font-size: 0.92rem;
+}
+
+.guide-modal ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.guide-modal .keys {
+  width: 100%;
+  font-size: 0.88rem;
+}
+
+.guide-modal .btn.primary {
+  margin-top: 10px;
+}
+
+.guide-version {
+  text-align: center;
+  margin-top: 6px;
+}
+
+/* Login */
+.app .auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.app .auth-tabs .tab {
+  padding: 8px 6px;
+  white-space: nowrap;
+}
+
+.field-error {
+  margin: -4px 0 2px;
+  color: #fca5a5;
+  font-size: 0.82rem;
+}
+
+.login input[aria-invalid='true'] {
+  border-color: #f87171;
+}
+
+/* Results */
+.festive {
+  margin: 0 0 6px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, #facc15, #f472b6, #38bdf8);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.gems-caught {
+  color: #e9d5ff;
+  font-weight: 700;
+}
+
+/* Settings */
+.settings-version {
+  text-align: center;
+}
+
+/* Profile */
+.profile {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  font-size: 2rem;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: #0c2a44;
+  flex: none;
+}
+
+.profile-id {
+  min-width: 0;
+}
+
+.profile-id h2 {
+  margin: 0;
+  text-transform: none;
+  color: var(--text);
+  font-size: 1.3rem;
+  overflow-wrap: anywhere;
+}
+
+.profile-id p {
+  overflow-wrap: anywhere;
+}
+
+.profile-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 14px 0;
+}
+
+.profile-name-field input,
+.app .settings input[type='text'] {
+  font: inherit;
+  color: var(--text);
+  background: #0a1226;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-height: 44px;
+}
+
+.profile-rocket {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  margin: 0 0 14px;
+}
+
+.profile-stats div,
+.profile-best li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.profile-stats dt {
+  color: var(--muted);
+}
+
+.profile-stats dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.profile-best,
+.profile-achievements {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.profile-best li span {
+  color: var(--muted);
+}
+
+.profile-best li.done b {
+  color: var(--good);
+}
+
+.profile-achievements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.profile-achievements li {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.profile-achievements li.done {
+  color: #fde68a;
+  border-color: #854d0e;
+  background: #2a1a05;
+}
+
+@media (max-width: 980px) {
+  .profile {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .profile > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 680px) {
+  .profile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.app .settings input[type='text'] {
+  flex: 1;
+  min-width: 0;
+}

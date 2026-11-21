@@ -110,6 +110,18 @@
     "fuelEfficiency": 22
   },
   {
+    "id": "body_juggernaut_hull",
+    "name": "Juggernaut Hull",
+    "category": "body",
+    "rarity": "rare",
+    "level": 4,
+    "price": 7200,
+    "mass": 48,
+    "hull": 360,
+    "fuelEfficiency": 10,
+    "maneuverability": -25
+  },
+  {
     "id": "fuel_tank_jerrycan_tank",
     "name": "Jerrycan Tank",
     "category": "fuel_tank",
@@ -208,6 +220,28 @@
     "price": 24500,
     "mass": 22,
     "fuelCapacity": 133
+  },
+  {
+    "id": "fuel_tank_bulk_barge",
+    "name": "Bulk Barge Tank",
+    "category": "fuel_tank",
+    "rarity": "rare",
+    "level": 3,
+    "price": 2900,
+    "mass": 30,
+    "fuelCapacity": 120,
+    "maneuverability": -20
+  },
+  {
+    "id": "fuel_tank_leviathan",
+    "name": "Leviathan Tank",
+    "category": "fuel_tank",
+    "rarity": "epic",
+    "level": 5,
+    "price": 26000,
+    "mass": 40,
+    "fuelCapacity": 260,
+    "maneuverability": -35
   },
   {
     "id": "engine_sparrow_e1",
@@ -318,6 +352,29 @@
     "fuelEfficiency": 12
   },
   {
+    "id": "engine_drag_racer_e3",
+    "name": "Drag Racer E3",
+    "category": "engine",
+    "rarity": "rare",
+    "level": 3,
+    "price": 3900,
+    "mass": 26,
+    "thrust": 140,
+    "fuelEfficiency": -25
+  },
+  {
+    "id": "engine_overdrive_e5",
+    "name": "Overdrive E5",
+    "category": "engine",
+    "rarity": "epic",
+    "level": 5,
+    "price": 36000,
+    "mass": 32,
+    "thrust": 300,
+    "fuelEfficiency": -40,
+    "maneuverability": -15
+  },
+  {
     "id": "booster_bottle_rocket",
     "name": "Bottle Rocket",
     "category": "booster",
@@ -416,6 +473,17 @@
     "price": 29500,
     "mass": 16,
     "thrust": 66
+  },
+  {
+    "id": "booster_nitro_burner",
+    "name": "Nitro Burner",
+    "category": "booster",
+    "rarity": "rare",
+    "level": 3,
+    "price": 3300,
+    "mass": 13,
+    "thrust": 60,
+    "fuelEfficiency": -20
   },
   {
     "id": "fins_stub_fins",
@@ -518,6 +586,17 @@
     "maneuverability": 88
   },
   {
+    "id": "fins_razor_vanes",
+    "name": "Razor Vanes",
+    "category": "fins",
+    "rarity": "rare",
+    "level": 4,
+    "price": 4600,
+    "mass": 6,
+    "maneuverability": 115,
+    "hull": -40
+  },
+  {
     "id": "shield_bubble_shield",
     "name": "Bubble Shield",
     "category": "shield",
@@ -618,6 +697,17 @@
     "shield": 133
   },
   {
+    "id": "shield_glass_dome",
+    "name": "Glass Dome Shield",
+    "category": "shield",
+    "rarity": "rare",
+    "level": 4,
+    "price": 11000,
+    "mass": 12,
+    "shield": 175,
+    "hull": -50
+  },
+  {
     "id": "weapon_pea_blaster",
     "name": "Pea Blaster",
     "category": "weapon",
@@ -716,6 +806,17 @@
     "price": 49000,
     "mass": 14,
     "weaponDamage": 88
+  },
+  {
+    "id": "weapon_doom_cannon",
+    "name": "Doom Cannon",
+    "category": "weapon",
+    "rarity": "epic",
+    "level": 5,
+    "price": 52000,
+    "mass": 22,
+    "weaponDamage": 175,
+    "maneuverability": -20
   },
   {
     "id": "pb_skylark_body",

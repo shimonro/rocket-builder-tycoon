@@ -32,6 +32,7 @@ export function verifyRun(body: Partial<RunBody>, save: SaveData | null): Verdic
   if (!level || !Number.isInteger(body.seed) || typeof body.aborted !== 'boolean') return reject(400, 'Malformed run.');
   if (!isValidLog(body.log, MAX_STEPS)) return reject(400, 'Malformed input log.');
   if (!save) return reject(403, 'No cloud save found for this account yet.');
+  if (save.godBackup) return reject(403, 'God-mode runs do not go on the leaderboards.');
   if (save.tutorialStep !== 'done' || !save.progress.unlocked.includes(level.id)) return reject(403, 'That level is not unlocked on this account.');
 
   const rocket = save.rocket as Rocket;

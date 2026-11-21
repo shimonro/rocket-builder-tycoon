@@ -1,4 +1,4 @@
-import { Application, Container, Graphics } from 'pixi.js';
+import { Application, Container, Graphics, Text } from 'pixi.js';
 import { createRng } from '../../core/rng';
 import type { FlightStats } from '../../engines/journey/config';
 import type { JourneyEvent, JourneyState } from '../../engines/journey/journey';
@@ -36,6 +36,28 @@ interface Particle {
   size: number;
   grow: number;
   color: number;
+  /** Drawn as a four-point sparkle instead of a dot. */
+  sparkle?: boolean;
+}
+
+/** A hoop flown through: flash plus shockwave rings around the rocket, for HOOP_FX seconds. */
+interface HoopFx {
+  t: number;
+}
+
+/** Pop text that rises above the rocket and fades. */
+interface Pop {
+  text: Text;
+  t: number;
+  dx: number;
+}
+
+/** A thing the tutorial flight is pointing at. */
+export interface Highlight {
+  x: number;
+  y: number;
+  /** Ring radius in meters. */
+  r: number;
 }
 
 interface Star {
@@ -47,6 +69,9 @@ interface Star {
 
 const ROCKET_WIDTH_M = 5;
 const ROCKET_SCREEN_Y = 0.7;
+const HOOP_FX = 0.75;
+const POP_LIFE = 0.9;
+const SPEED_LINES = 0.45;
 
 function drawObstacle(o: Obstacle): Graphics {
   const g = new Graphics();
@@ -123,6 +148,15 @@ function drawPickup(p: Pickup): Graphics {
   if (p.kind === 'coin') {
     g.circle(0, 0, 1.1).fill(0xfacc15).stroke({ width: 0.18, color: 0xa16207 });
     g.circle(0, 0, 0.6).stroke({ width: 0.15, color: 0xfde68a });
+  } else if (p.kind === 'gem') {
+    // A cut diamond with a purple/cyan glow, clearly rarer than a coin.
+    g.circle(0, 0, 2.6).fill({ color: 0xa855f7, alpha: 0.16 });
+    g.circle(0, 0, 1.9).fill({ color: 0x22d3ee, alpha: 0.18 });
+    g.poly([0, -1.7, 1.25, -0.45, 0, 1.8, -1.25, -0.45]).fill(0x9333ea).stroke({ width: 0.14, color: 0xf5d0fe });
+    g.poly([0, -1.7, 1.25, -0.45, 0, -0.45]).fill(0x67e8f9);
+    g.poly([0, -1.7, -1.25, -0.45, 0, -0.45]).fill(0xc084fc);
+    g.poly([-1.25, -0.45, 0, -0.45, 0, 1.8]).fill(0x7e22ce);
+    g.moveTo(-0.55, -1.05).lineTo(-0.15, -1.35).stroke({ width: 0.16, color: 0xffffff, alpha: 0.9 });
   } else {
     g.circle(0, 0, 2).fill({ color: 0x4ade80, alpha: 0.18 });
     g.roundRect(-1, -1.3, 2, 2.6, 0.3).fill(0xdc2626).stroke({ width: 0.15, color: 0x0f172a });
@@ -156,10 +190,19 @@ export class FlightRenderer {
   private readonly shieldBubble = new Graphics();
   private readonly obstacleViews = new Map<number, Graphics>();
   private readonly hoopViews = new Map<number, Graphics>();
+  /** Screen-space effects drawn over the world: hoop speed lines and the tutorial highlight ring. */
+  private readonly screenFx = new Graphics();
+  private readonly popLayer = new Container();
   private readonly starField: Star[] = [];
   private particles: Particle[] = [];
+  private hoopFx: HoopFx[] = [];
+  private pops: Pop[] = [];
+  private highlight: Highlight | null = null;
   private ppm = 10;
   private shake = 0;
+  /** Brief zoom-in punch and speed lines after a hoop (seconds left). */
+  private punch = 0;
+  private speedLines = 0;
   private time = 0;
   private exploded = false;
   private lastState: JourneyState | null = null;
@@ -185,7 +228,40 @@ export class FlightRenderer {
     this.ghostView.alpha = 0.3;
     this.ghostView.visible = false;
     this.world.addChild(this.track, this.hoopLayer, this.pickupLayer, this.ghostView, this.obstacleLayer, this.fx, this.rocket);
-    app.stage.addChild(this.backdrop, this.stars, this.world);
+    app.stage.addChild(this.backdrop, this.stars, this.world, this.screenFx, this.popLayer);
+  }
+
+  /** Screen position (CSS pixels) of a world point, as last rendered. */
+  worldToScreen(x: number, y: number): { x: number; y: number } {
+    const s = this.world.scale.x;
+    return { x: this.world.position.x + x * s, y: this.world.position.y - (y - (this.lastState?.y ?? 0)) * s };
+  }
+
+  /** Meters visible ahead of the rocket, leaving `topPx` pixels at the top (under the HUD). */
+  metersAhead(topPx: number): number {
+    return Math.max(0, this.app.screen.height * ROCKET_SCREEN_Y - topPx) / this.ppm;
+  }
+
+  /** Draws a pulsing ring around a point of interest (tutorial intros); null removes it. */
+  setHighlight(target: Highlight | null) {
+    this.highlight = target;
+  }
+
+  private pop(label: string, fill: number, dx = 0) {
+    const text = new Text({
+      text: label,
+      style: {
+        fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+        fontSize: 26,
+        fontWeight: '900',
+        fill,
+        stroke: { color: 0x060b1a, width: 5 },
+        dropShadow: { color: fill, blur: 10, distance: 0, alpha: 0.7 },
+      },
+    });
+    text.anchor.set(0.5);
+    this.popLayer.addChild(text);
+    this.pops.push({ text, t: 0, dx });
   }
 
   handleEvents(events: JourneyEvent[], state: JourneyState) {
@@ -199,10 +275,20 @@ export class FlightRenderer {
           this.burst(e.x, e.y, 22, [0xfacc15, 0xf97316, 0xffffff], 16);
           break;
         case 'hoop':
-          this.burst(e.x, e.y, 16, [0xfde047, 0xfef9c3], 10);
+          this.hoopFx.push({ t: 0 });
+          this.burst(e.x, e.y, 18, [0xfde047, 0xfef9c3, 0xffffff], 14);
+          this.burst(e.x, e.y, 14, [0xffffff, 0xfde047, 0x7dd3fc], 20, true);
+          this.punch = SPEED_LINES;
+          this.speedLines = SPEED_LINES;
+          this.pop('+BOOST', 0xfde047);
           break;
         case 'coin':
           this.burst(e.x, e.y, 6, [0xfacc15, 0xfef9c3], 6);
+          break;
+        case 'gem':
+          this.burst(e.x, e.y, 16, [0xa855f7, 0x67e8f9, 0xf5d0fe], 12);
+          this.burst(e.x, e.y, 12, [0xffffff, 0x67e8f9, 0xc084fc], 16, true);
+          this.pop('+1 💎', 0xd8b4fe, 34);
           break;
         case 'fuelCan':
           this.burst(e.x, e.y, 14, [0x4ade80, 0xdc2626], 9);
@@ -225,7 +311,7 @@ export class FlightRenderer {
     }
   }
 
-  private burst(x: number, y: number, count: number, colors: number[], speed: number) {
+  private burst(x: number, y: number, count: number, colors: number[], speed: number, sparkle = false) {
     for (let i = 0; i < count; i++) {
       const a = Math.random() * Math.PI * 2;
       const v = speed * (0.3 + Math.random() * 0.7);
@@ -237,9 +323,10 @@ export class FlightRenderer {
         vy: Math.sin(a) * v + (this.lastState?.vy ?? 0) * 0.6,
         life,
         maxLife: life,
-        size: 0.25 + Math.random() * 0.45,
-        grow: -0.2,
+        size: sparkle ? 0.6 + Math.random() * 0.6 : 0.25 + Math.random() * 0.45,
+        grow: sparkle ? -0.6 : -0.2,
         color: colors[i % colors.length],
+        sparkle,
       });
     }
   }
@@ -260,9 +347,12 @@ export class FlightRenderer {
 
     this.shake = Math.max(0, this.shake - dt);
     const shakePx = this.shake * 18;
-    this.world.scale.set(ppm);
+    // A hoop punches the camera in a little around the rocket, easing back out.
+    this.punch = Math.max(0, this.punch - dt);
+    const scale = ppm * (1 + 0.08 * Math.sin(Math.PI * Math.sqrt(1 - this.punch / SPEED_LINES)));
+    this.world.scale.set(scale);
     this.world.position.set(
-      (W - worldWidth * ppm) / 2 + (Math.random() - 0.5) * shakePx,
+      (W - worldWidth * ppm) / 2 + state.x * (ppm - scale) + (Math.random() - 0.5) * shakePx,
       H * ROCKET_SCREEN_Y + (Math.random() - 0.5) * shakePx,
     );
 
@@ -305,8 +395,9 @@ export class FlightRenderer {
       }
       view.position.set(h.x, toY(h.y));
       if (h.collected) {
-        view.scale.set(Math.min(2, view.scale.x + dt * 3));
-        view.alpha = Math.max(0, view.alpha - dt * 2.5);
+        // The ring flares white-hot, then blows outward and fades.
+        view.scale.set(Math.min(2.6, view.scale.x + dt * 5));
+        view.alpha = Math.max(0, view.alpha - dt * 2);
       } else if (h.crossed) {
         view.alpha = 0.3;
       }
@@ -318,7 +409,7 @@ export class FlightRenderer {
       }
     }
 
-    // Pickups: coins spin, fuel cans bob.
+    // Pickups: coins spin, fuel cans bob, gems pulse and twinkle.
     const livePickups = new Set<number>();
     for (const p of state.pickups) {
       livePickups.add(p.id);
@@ -328,8 +419,26 @@ export class FlightRenderer {
         this.pickupViews.set(p.id, view);
         this.pickupLayer.addChild(view);
       }
-      view.position.set(p.x, toY(p.y) + (p.kind === 'fuel' ? Math.sin(this.time * 3 + p.id) * 0.4 : 0));
+      view.position.set(p.x, toY(p.y) + (p.kind === 'coin' ? 0 : Math.sin(this.time * 3 + p.id) * 0.4));
       if (p.kind === 'coin') view.scale.x = Math.max(0.15, Math.abs(Math.cos(this.time * 4 + p.id)));
+      if (p.kind === 'gem') {
+        view.scale.set(1.2 + Math.sin(this.time * 5 + p.id) * 0.12);
+        if (Math.random() < dt * 9) {
+          const a = Math.random() * Math.PI * 2;
+          this.particles.push({
+            x: p.x + Math.cos(a) * 2.2,
+            y: p.y + Math.sin(a) * 2.2,
+            vx: 0,
+            vy: 0,
+            life: 0.5,
+            maxLife: 0.5,
+            size: 0.5 + Math.random() * 0.5,
+            grow: -0.8,
+            color: Math.random() < 0.5 ? 0x67e8f9 : 0xf5d0fe,
+            sparkle: true,
+          });
+        }
+      }
     }
     for (const [id, view] of this.pickupViews) {
       if (!livePickups.has(id)) {
@@ -377,6 +486,7 @@ export class FlightRenderer {
     }
 
     this.drawFx(state, dt, toY);
+    this.drawScreenFx(state, dt, W, H);
   }
 
   private trailColor(): number {
@@ -475,7 +585,19 @@ export class FlightRenderer {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.size = Math.max(0.05, p.size + p.grow * dt);
-      g.circle(p.x, toY(p.y), p.size).fill({ color: p.color, alpha: p.life / p.maxLife });
+      if (p.sparkle) g.star(p.x, toY(p.y), 4, p.size, p.size * 0.3, this.time * 3).fill({ color: p.color, alpha: p.life / p.maxLife });
+      else g.circle(p.x, toY(p.y), p.size).fill({ color: p.color, alpha: p.life / p.maxLife });
+    }
+    // Hoop flash: a white-hot ring and two shockwaves rushing outward from the rocket as it breaks through.
+    const hw = this.opts.hoopHalfWidth;
+    this.hoopFx = this.hoopFx.filter((h) => (h.t += dt) < HOOP_FX);
+    for (const h of this.hoopFx) {
+      const k = h.t / HOOP_FX;
+      const ease = 1 - (1 - k) ** 3;
+      if (k < 0.3) g.ellipse(state.x, 0, hw * (1 + k * 1.5), 1.1 * (1 + k * 4)).stroke({ width: 1.4, color: 0xffffff, alpha: 1 - k / 0.3 });
+      g.circle(state.x, 0, hw * (0.6 + ease * 2.4)).stroke({ width: 0.9 * (1 - k) + 0.1, color: 0xfde047, alpha: (1 - k) * 0.9 });
+      const k2 = Math.max(0, k - 0.15) / 0.85;
+      if (k2 > 0) g.circle(state.x, 0, hw * (0.5 + (1 - (1 - k2) ** 3) * 3.4)).stroke({ width: 0.5 * (1 - k2) + 0.05, color: 0x7dd3fc, alpha: (1 - k2) * 0.6 });
     }
     for (const p of state.projectiles) {
       g.rect(p.x - 0.18, toY(p.y) - 1.2, 0.36, 2.4).fill(0x67e8f9);
@@ -490,7 +612,50 @@ export class FlightRenderer {
     }
   }
 
+  /** Speed lines after a hoop, pop texts above the rocket, and the tutorial highlight ring, in screen pixels. */
+  private drawScreenFx(state: JourneyState, dt: number, W: number, H: number) {
+    const g = this.screenFx;
+    g.clear();
+    const rocket = this.worldToScreen(state.x, state.y);
+    this.speedLines = Math.max(0, this.speedLines - dt);
+    if (this.speedLines > 0 && dt > 0) {
+      const k = this.speedLines / SPEED_LINES;
+      const reach = Math.hypot(W, H);
+      for (let i = 0; i < 28; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const r0 = Math.min(W, H) * (0.22 + Math.random() * 0.25);
+        const r1 = r0 + reach * (0.15 + Math.random() * 0.25);
+        g.moveTo(rocket.x + Math.cos(a) * r0, rocket.y + Math.sin(a) * r0)
+          .lineTo(rocket.x + Math.cos(a) * r1, rocket.y + Math.sin(a) * r1)
+          .stroke({ width: 1.5 + Math.random() * 2.5, color: i % 3 === 0 ? 0xfde047 : 0xffffff, alpha: 0.75 * k });
+      }
+    }
+    this.pops = this.pops.filter((p) => {
+      p.t += dt;
+      if (p.t < POP_LIFE) return true;
+      p.text.destroy();
+      return false;
+    });
+    for (const p of this.pops) {
+      const k = p.t / POP_LIFE;
+      // Pops in with a little overshoot, then floats up and fades.
+      const s = k < 0.15 ? 0.4 + (k / 0.15) * 0.9 : 1.3 - Math.min(1, (k - 0.15) / 0.2) * 0.3;
+      p.text.scale.set(s);
+      p.text.alpha = k < 0.6 ? 1 : 1 - (k - 0.6) / 0.4;
+      p.text.position.set(rocket.x + p.dx, rocket.y - 70 - k * 60);
+    }
+    if (this.highlight) {
+      const h = this.highlight;
+      const c = this.worldToScreen(h.x, h.y);
+      const pulse = (performance.now() / 1000) % 1;
+      const r = h.r * this.world.scale.x + 10;
+      g.circle(c.x, c.y, r).stroke({ width: 4, color: 0xfde047, alpha: 0.95 });
+      g.circle(c.x, c.y, r + pulse * 26).stroke({ width: 3 * (1 - pulse) + 1, color: 0xfde047, alpha: 0.8 * (1 - pulse) });
+    }
+  }
+
   destroy() {
+    this.pops = [];
     this.obstacleViews.clear();
     this.hoopViews.clear();
     this.pickupViews.clear();

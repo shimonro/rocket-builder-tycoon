@@ -8,6 +8,8 @@ import { rocketRanking } from '../../state/selectors';
 import { fetchLeaderboard, useSession } from '../../state/session';
 import { cx, GateButton, money } from '../components/common';
 
+const FAIR_PLAY = 'Fair play: our server re-flies every run from your recorded controls, so only real distances count.';
+
 function Check({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return <li className={ok ? 'check ok' : 'check'}>{ok ? '✅' : '⬜'} {children}</li>;
 }
@@ -41,7 +43,7 @@ function Leaderboard({ level, onClose }: { level: Level; onClose: () => void }) 
           </ol>
         )}
         <p className="muted small">
-          {user ? 'Every run is replayed on the server before it counts.' : 'Sign in to compete. Every run is replayed on the server before it counts.'}
+          {user ? FAIR_PLAY : `Sign in to compete. ${FAIR_PLAY}`}
         </p>
         <button type="button" className="btn primary" onClick={onClose}>
           Close

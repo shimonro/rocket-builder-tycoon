@@ -1,6 +1,10 @@
 import type { EventBus, GameEvent } from '../../core/events';
 
-type Tone = { freq: number; to?: number; duration: number; type?: OscillatorType; gain?: number; delay?: number };
+/**
+ * One synthesized layer. `type: 'noise'` plays filtered white noise with a bandpass centered on
+ * `freq` (sweeping to `to`); `attack` fades in instead of starting at full gain.
+ */
+type Tone = { freq: number; to?: number; duration: number; type?: OscillatorType | 'noise'; gain?: number; delay?: number; attack?: number };
 
 /** Every sound is synthesized with WebAudio, so the game ships no audio files. */
 const SOUNDS: Partial<Record<GameEvent['type'], Tone[]>> = {
@@ -9,7 +13,35 @@ const SOUNDS: Partial<Record<GameEvent['type'], Tone[]>> = {
     { freq: 990, duration: 0.12, type: 'square', gain: 0.15, delay: 0.07 },
   ],
   sell: [{ freq: 520, to: 330, duration: 0.15, type: 'triangle' }],
-  equip: [{ freq: 220, to: 440, duration: 0.1, type: 'triangle' }],
+  // Clunk (thump + metal click) as the part seats, a servo whirr, then a latch click (~0.45 s).
+  equip: [
+    { freq: 150, to: 50, duration: 0.14, type: 'sine', gain: 0.4 },
+    { freq: 1800, duration: 0.05, type: 'noise', gain: 0.35 },
+    { freq: 430, duration: 0.07, type: 'square', gain: 0.05 },
+    { freq: 170, to: 480, duration: 0.26, type: 'sawtooth', gain: 0.035, delay: 0.1, attack: 0.05 },
+    { freq: 700, to: 2600, duration: 0.26, type: 'noise', gain: 0.12, delay: 0.1, attack: 0.05 },
+    { freq: 1250, duration: 0.04, type: 'square', gain: 0.06, delay: 0.39 },
+    { freq: 3200, duration: 0.03, type: 'noise', gain: 0.15, delay: 0.39 },
+  ],
+  // Rising sparkle of high bell tones with a shimmer tail.
+  gem: [
+    { freq: 1568, duration: 0.16, type: 'sine', gain: 0.14 },
+    { freq: 2093, duration: 0.16, type: 'sine', gain: 0.13, delay: 0.05 },
+    { freq: 2637, duration: 0.18, type: 'sine', gain: 0.12, delay: 0.1 },
+    { freq: 3136, duration: 0.3, type: 'sine', gain: 0.11, delay: 0.15 },
+    { freq: 4186, duration: 0.35, type: 'triangle', gain: 0.04, delay: 0.18, attack: 0.03 },
+    { freq: 6000, duration: 0.25, type: 'noise', gain: 0.05, delay: 0.15, attack: 0.04 },
+  ],
+  // Short brass-like fanfare: da-da-da-daaa ending on a C major chord.
+  celebrate: [
+    { freq: 392, duration: 0.11, type: 'square', gain: 0.08 },
+    { freq: 523, duration: 0.11, type: 'square', gain: 0.08, delay: 0.12 },
+    { freq: 659, duration: 0.11, type: 'square', gain: 0.08, delay: 0.24 },
+    { freq: 1047, duration: 0.6, type: 'square', gain: 0.08, delay: 0.36 },
+    { freq: 659, duration: 0.6, type: 'triangle', gain: 0.12, delay: 0.36 },
+    { freq: 784, duration: 0.6, type: 'triangle', gain: 0.12, delay: 0.36 },
+    { freq: 131, duration: 0.6, type: 'sine', gain: 0.2, delay: 0.36 },
+  ],
   unlock: [
     { freq: 523, duration: 0.1, type: 'triangle' },
     { freq: 659, duration: 0.1, type: 'triangle', delay: 0.1 },
@@ -269,16 +301,40 @@ export function connectAudio(bus: EventBus<GameEvent>, settings: () => AudioSett
     const now = c.currentTime;
     for (const tone of tones) {
       const start = now + (tone.delay ?? 0);
-      const osc = c.createOscillator();
+      const end = start + tone.duration;
+      const peak = (tone.gain ?? 0.2) * volume;
       const gain = c.createGain();
-      osc.type = tone.type ?? 'sine';
-      osc.frequency.setValueAtTime(tone.freq, start);
-      if (tone.to) osc.frequency.exponentialRampToValueAtTime(tone.to, start + tone.duration);
-      gain.gain.setValueAtTime((tone.gain ?? 0.2) * volume, start);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + tone.duration);
-      osc.connect(gain).connect(c.destination);
-      osc.start(start);
-      osc.stop(start + tone.duration + 0.02);
+      if (tone.attack) {
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(peak, start + tone.attack);
+      } else {
+        gain.gain.setValueAtTime(peak, start);
+      }
+      gain.gain.exponentialRampToValueAtTime(0.0001, end);
+      gain.connect(c.destination);
+      let source: AudioScheduledSourceNode;
+      let pitch: AudioParam;
+      if (tone.type === 'noise') {
+        const src = c.createBufferSource();
+        src.buffer = noise;
+        const band = c.createBiquadFilter();
+        band.type = 'bandpass';
+        band.Q.value = 1.5;
+        src.connect(band).connect(gain);
+        src.start(start, Math.random() * 0.5);
+        source = src;
+        pitch = band.frequency;
+      } else {
+        const osc = c.createOscillator();
+        osc.type = tone.type ?? 'sine';
+        osc.connect(gain);
+        osc.start(start);
+        source = osc;
+        pitch = osc.frequency;
+      }
+      pitch.setValueAtTime(tone.freq, start);
+      if (tone.to) pitch.exponentialRampToValueAtTime(tone.to, end);
+      source.stop(end + 0.02);
     }
   }
 

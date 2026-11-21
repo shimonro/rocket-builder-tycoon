@@ -16,9 +16,18 @@ export function rankingWith(rocket: Rocket, part: Part, upgrades: Upgrades = {})
   return rocketRanking({ ...rocket, [part.category]: part.id }, upgrades);
 }
 
-/** True when the player has the part spare or mounted. */
+/** True when the player has the part spare or mounted on any rocket in the fleet. */
 export function ownsPart(save: SaveData, partId: string): boolean {
-  return (save.inventory[partId] ?? 0) > 0 || Object.values(save.rocket).includes(partId);
+  return (
+    (save.inventory[partId] ?? 0) > 0 ||
+    Object.values(save.rocket).includes(partId) ||
+    save.fleet.some((bay, i) => i !== save.activeRocket && Object.values(bay.parts).includes(partId))
+  );
+}
+
+/** Rockets per bay with the active one's live parts. */
+export function fleetRockets(save: SaveData) {
+  return save.fleet.map((bay, i) => (i === save.activeRocket ? { ...bay, parts: save.rocket } : bay));
 }
 
 export function progressSnapshot(save: SaveData): ProgressSnapshot {
