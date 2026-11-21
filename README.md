@@ -31,16 +31,22 @@ Add `?timescale=4` to the URL to speed up flights (used by the E2E tests).
 | ← → / A D | drag anywhere | steer |
 | ↑ / W | ▲ | full throttle (default is 70% cruise) |
 | ↓ / S | ▼ | brake / reverse |
+| ↑ ×3 quickly | ▲ ×3 quickly | fast mode: locks full throttle; tap ↓ / ▼ once to cancel |
 | Space | ⚡ | turbo (short burst, costs 3% fuel) |
 | F / X / Enter | 🔫 | fire weapon (Level 2+) |
 | Esc / P | ⏸ | pause, or end the flight and collect the payout |
 
 ## What's in the game
 
-- **Shop, hangar, 10 levels, locked tutorial** (returning players can skip it), per the design document.
+- **Shop, hangar, 10 levels, locked tutorial** (returning players can skip it), per the design document. The tutorial points at each thing it explains (cash, ranking ★, gems 💎, rocket stats) and the tutorial flight pauses to introduce the first hoop, asteroid, coin, fuel can and gem. The ℹ️ guide can replay it as a guided tour without touching progress.
+- **Hangar bays:** up to 4 rockets (bays cost $2,500 / $12,000 / $45,000). Each prebuilt rocket needs a free bay; inventory parts are shared.
+- **Shop tools:** sort (price, ranking gain, rarity), compare any part or prebuilt against your current rocket, per-category help, and specialist parts (part levels 3–5) that boost one stat at a cost elsewhere (penalties are not scaled by rarity or upgrades).
 - **Part upgrades:** +10% to all of a part's stats per level, up to 3 levels; level n+1 costs price × 0.5 × (n+1).
 - **Flight variety:** coin trails (paid after the flight, outside the soft cap), fuel cans (+20% tank), wind bands (Level 3+), meteor showers (Level 4+), and a Guardian boss just before the finish line (Level 2+; shooting it down pays 15 coins).
-- **Gems 💎 (premium currency, earned only):** 16 achievements and 3 daily missions pay gems, which buy cosmetic hull paints, flame colors and smoke trails. Gems are never sold and never affect stats.
+- **Gems 💎 (premium currency, earned only):** 17 achievements, 3 daily missions and rare gems caught in flight pay gems, which buy cosmetic hull paints, flame colors, smoke trails and flags/logos on the hull. Gems are never sold and never affect stats.
+- **Replays and celebrations:** watch any finished flight again from the results (1×/2×/4×); confetti for new bests, completed levels, achievements and missions.
+- **Profile:** pilot name, rocket and lifetime statistics.
+- **Environment badge and god mode:** the top bar shows `QA`/`DEV` and the version (`package.json` version + commit). QA and local builds have a god-mode toggle (endless cash and gems, everything unlocked); switching it off restores the earlier save, and god-mode runs never reach the leaderboards. Production builds never include the toggle.
 - **Ghost:** a faint rocket replays your best run on each level (stored on the device).
 - **Leaderboards:** signed-in players' best run per level. The `submit-run` edge function replays the recorded inputs with the rocket from the player's cloud save, so the score is the server's distance, not a number the client claims.
 - **Accounts:** email/password, guest→account import, password reset by email, and save-conflict handling when two devices play the same account.

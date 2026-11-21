@@ -55,7 +55,7 @@ const TIPS: Tip[] = [
   },
   {
     id: 'leaderboard',
-    text: '🏆 You are signed in: your best runs go on the per-level leaderboards once the server has replayed them.',
+    text: '🏆 You are signed in, so your best runs go on the per-level leaderboards. Fair play: our server re-flies every run from your recorded controls, so only real distances count.',
     when: (_s, signedIn) => signedIn,
   },
 ];
@@ -64,7 +64,8 @@ export function Tips() {
   const save = useGame((s) => s.save);
   const markTip = useGame((s) => s.markTip);
   const signedIn = useSession((s) => s.user !== null);
-  if (!tutorialDone(save)) return null;
+  const touring = useGame((s) => s.tour !== null);
+  if (!tutorialDone(save) || touring) return null;
   const tip = TIPS.find((t) => !save.tips.includes(t.id) && t.when(save, signedIn));
   if (!tip) return null;
   return (

@@ -98,7 +98,10 @@ describe('parseSave', () => {
   });
 
   it('upgrades version 2 saves into one hangar bay holding their rocket', () => {
-    const { fleet: _fleet, activeRocket: _active, godBackup: _god, ...v2 } = { ...played, version: 2, rocket: { engine: 'e' } };
+    const v2: Record<string, unknown> = { ...played, version: 2, rocket: { engine: 'e' } };
+    delete v2.fleet;
+    delete v2.activeRocket;
+    delete v2.godBackup;
     const stats = { ...played.stats } as Partial<SaveData['stats']>;
     delete stats.gemsFound;
     const save = parseSave(JSON.parse(JSON.stringify({ ...v2, stats })))!;

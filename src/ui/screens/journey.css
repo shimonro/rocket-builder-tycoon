@@ -1,0 +1,232 @@
+/* Flight screen extras: level %, gems, fast mode, celebrations, tutorial intros, replay. */
+.app-replay main {
+  position: fixed;
+  inset: 0;
+}
+
+.hud-percent {
+  color: #7dd3fc;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.hud-bars .gems {
+  color: #d8b4fe;
+  font-weight: 700;
+  text-shadow: 0 0 8px #a855f799;
+}
+
+.flight-hint .fast-hint {
+  display: block;
+  margin-top: 6px;
+  color: #fde68a;
+  font-size: 0.85em;
+}
+
+/* Fast mode: full throttle locked on. */
+.fast-mode {
+  position: absolute;
+  left: 50%;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 2px solid #fbbf24;
+  background: #3b2a06e6;
+  color: #fde047;
+  font-weight: 900;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 0 18px #fbbf2488;
+  animation: fast-glow 0.9s ease-in-out infinite alternate;
+}
+
+.fast-mode small {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: #fde68acc;
+}
+
+@keyframes fast-glow {
+  to {
+    box-shadow: 0 0 30px #fbbf24cc;
+  }
+}
+
+.touch-btn.locked {
+  border-color: #fbbf24;
+  background: #fbbf2444;
+  box-shadow: 0 0 16px #fbbf24aa;
+}
+
+/* New personal best / target reached. */
+.banner.cheer {
+  top: 30%;
+  z-index: 5;
+  max-width: calc(100% - 24px);
+  padding: 12px 22px;
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #fef9c3;
+  border: 2px solid #facc15;
+  background: linear-gradient(180deg, #3b2a06f0, #1e1405f0);
+  box-shadow: 0 0 28px #facc1566;
+  animation: cheer-pop 0.45s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+@keyframes cheer-pop {
+  from {
+    transform: translateX(-50%) scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Tutorial intros: dim everything except a hole around the thing being introduced. */
+.intro-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  cursor: pointer;
+  background: radial-gradient(circle at var(--x) var(--y), transparent var(--r), #000000b8 calc(var(--r) + 28px));
+  animation: intro-fade 0.25s ease-out;
+}
+
+@keyframes intro-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.intro-callout {
+  position: absolute;
+  left: var(--left);
+  width: var(--w);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 2px solid #fbbf24;
+  background: var(--panel);
+  box-shadow: 0 10px 30px #000a;
+  cursor: default;
+  animation: intro-pop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.intro-callout.below {
+  top: calc(var(--y) + var(--r) + 16px);
+}
+
+.intro-callout.above {
+  bottom: calc(100% - var(--y) + var(--r) + 16px);
+}
+
+/* Arrow pointing at the highlighted thing. */
+.intro-callout::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--arrow) - 10px);
+  border: 10px solid transparent;
+}
+
+.intro-callout.below::after {
+  bottom: 100%;
+  border-bottom-color: #fbbf24;
+}
+
+.intro-callout.above::after {
+  top: 100%;
+  border-top-color: #fbbf24;
+}
+
+.intro-callout strong {
+  font-size: 1.1rem;
+  color: #fde047;
+}
+
+.intro-callout p {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.intro-callout .btn {
+  align-self: flex-end;
+  min-width: 96px;
+}
+
+@keyframes intro-pop {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+
+/* Replay: badge, speed and close at the bottom, where the touch controls usually are. */
+.replay-bar {
+  position: absolute;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #060b1add;
+  white-space: nowrap;
+}
+
+.replay-bar .btn {
+  border-radius: 999px;
+}
+
+.replay-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #be123c;
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  animation: replay-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes replay-blink {
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@media (max-width: 680px) {
+  .hud-percent {
+    font-size: 0.95rem;
+  }
+
+  .banner.cheer {
+    font-size: 1.1rem;
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fast-mode,
+  .replay-badge,
+  .banner.cheer,
+  .intro-overlay,
+  .intro-callout {
+    animation: none;
+  }
+}

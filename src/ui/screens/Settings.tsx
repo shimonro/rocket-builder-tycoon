@@ -136,6 +136,11 @@ export function Settings() {
         </div>
         {message && <p className="muted">{message}</p>}
       </section>
+
+      <p className="muted small settings-version" data-testid="app-version">
+        Rocket Builder Tycoon v{__APP_VERSION__}
+        {__APP_ENV__ !== 'prod' && ` · ${__APP_ENV__.toUpperCase()}`}
+      </p>
     </div>
   );
 }

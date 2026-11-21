@@ -32,3 +32,23 @@ test('touch controls fly the rocket on a phone', async ({ page }) => {
   await page.getByTestId('retry').tap();
   await expect(page.getByTestId('journey')).toBeVisible();
 });
+
+test('triple-tapping ▲ locks fast mode and one ▼ tap releases it', async ({ page }) => {
+  await startWithSave(page, veteranSave());
+  await page.getByTestId('launch').click();
+  const controls = page.getByTestId('touch-controls');
+  const forward = controls.getByRole('button', { name: 'Forward' });
+  // Three taps inside the 0.6 s window, sent in one go so test round-trips do not stretch them apart.
+  await forward.evaluate((button) => {
+    for (let i = 0; i < 3; i++) {
+      button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1 }));
+      button.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1 }));
+    }
+  });
+  await expect(page.getByTestId('fast-mode')).toBeVisible();
+  await expect(page.getByTestId('hud-gems')).toBeVisible();
+  const backward = controls.getByRole('button', { name: 'Backward' });
+  await backward.dispatchEvent('pointerdown');
+  await backward.dispatchEvent('pointerup');
+  await expect(page.getByTestId('fast-mode')).toHaveCount(0);
+});

@@ -2,6 +2,7 @@ import { achievements } from '../../data';
 import { useGame } from '../../state/game';
 import { progressSnapshot, tutorialDone } from '../../state/selectors';
 import { Bar, cx, GateButton } from '../components/common';
+import { celebrate } from '../components/Confetti';
 
 export function Missions() {
   const save = useGame((s) => s.save);
@@ -34,7 +35,16 @@ export function Missions() {
                       {m.progress.toLocaleString('en-US')} / {m.target.toLocaleString('en-US')}
                     </small>
                   </div>
-                  <GateButton action={`claim:${m.id}`} onClick={() => claim(m.id)} disabled={!done || m.claimed} className="small primary" testId={`claim-${m.id}`}>
+                  <GateButton
+                    action={`claim:${m.id}`}
+                    onClick={() => {
+                      claim(m.id);
+                      celebrate();
+                    }}
+                    disabled={!done || m.claimed}
+                    className="small primary"
+                    testId={`claim-${m.id}`}
+                  >
                     {m.claimed ? 'Claimed ✓' : `Claim ${m.gems} 💎`}
                   </GateButton>
                 </li>

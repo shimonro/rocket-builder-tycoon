@@ -1,9 +1,11 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import type { Category, Part } from '../../core/parts/parts';
-import { TUTORIAL_MESSAGES } from '../../engines/tutorial/tutorial';
+import { TUTORIAL_MESSAGES, type TutorialStep } from '../../engines/tutorial/tutorial';
 import { useGame } from '../../state/game';
 import { allowed, tutorialDone } from '../../state/selectors';
 import { partIconSvg, RARITY_COLORS } from '../art/rocketArt';
+import { TOUR, TUTORIAL_TARGETS } from '../tour';
+import { Spotlight } from './Spotlight';
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   body: 'Body',
@@ -87,14 +89,63 @@ export function GateButton({ action, onClick, disabled, className, title, childr
   );
 }
 
-/** The tutorial's coach bubble, pinned above the current screen. */
+const TOUR_END_NOTICE = 'Tour over! Your next flight will explain hoops, asteroids and coins.';
+
+/** The replayable guided tour: walks through the screens, spotlighting one thing per stop. */
+function TourCoach({ stop }: { stop: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const screen = useGame((s) => s.screen);
+  const { setTour, navigate } = useGame.getState();
+  const current = TOUR[Math.min(stop, TOUR.length - 1)];
+  const last = stop >= TOUR.length - 1;
+  useEffect(() => {
+    if (useGame.getState().screen !== current.screen) navigate(current.screen);
+  }, [current, navigate]);
+  const end = (skipped: boolean) => {
+    setTour(null);
+    // The last stop already says this.
+    if (skipped) useGame.setState({ notice: TOUR_END_NOTICE });
+  };
+  return (
+    <div ref={ref} className="coach guide" data-testid="tour" role="status">
+      <span className="coach-avatar" aria-hidden>
+        🧑‍🚀
+      </span>
+      <p>
+        <small className="coach-step">
+          {stop + 1}/{TOUR.length}
+        </small>{' '}
+        {current.text}
+      </p>
+      <div className="coach-actions">
+        <button type="button" className="btn primary" onClick={() => (last ? end(false) : setTour(stop + 1))} data-testid="tour-next">
+          {last ? 'Done' : 'Next'}
+        </button>
+        {!last && (
+          <button type="button" className="btn ghost small" onClick={() => end(true)} data-testid="tour-end">
+            Skip tour
+          </button>
+        )}
+      </div>
+      {screen === current.screen && <Spotlight key={stop} target={current.target} from={ref} />}
+    </div>
+  );
+}
+
+const TOUR_STEPS = new Set<TutorialStep>(['tour_cash', 'tour_ranking', 'tour_gems', 'tour_stats']);
+
+/** The tutorial's coach bubble, pinned above the current screen, pointing at what it explains. */
 export function Coach() {
+  const ref = useRef<HTMLDivElement>(null);
   const step = useGame((s) => s.save.tutorialStep);
+  const tour = useGame((s) => s.tour);
   const tutorialNext = useGame((s) => s.tutorialNext);
   const skip = useGame((s) => s.skipTutorial);
+  if (step === 'done' && tour !== null) return <TourCoach stop={tour} />;
   if (step === 'done' || step === 'flight') return null;
+  const target = TUTORIAL_TARGETS[step];
   return (
-    <div className="coach" data-testid="coach" role="status">
+    <div ref={ref} className="coach guide" data-testid="coach" role="status">
       <span className="coach-avatar" aria-hidden>
         🧑‍🚀
       </span>
@@ -109,6 +160,14 @@ export function Coach() {
           </button>
         </div>
       )}
+      {TOUR_STEPS.has(step) && (
+        <div className="coach-actions">
+          <GateButton action="next" onClick={tutorialNext} className="primary" testId="tutorial-next">
+            Next
+          </GateButton>
+        </div>
+      )}
+      {target && <Spotlight key={step} target={target} from={ref} />}
     </div>
   );
 }

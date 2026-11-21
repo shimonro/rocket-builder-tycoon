@@ -1,0 +1,392 @@
+/* Hangar: bay bar, inventory sort/filter and equip feedback. App.tsx imports this before
+   styles.css, so overrides of shared rules use `.screen.hangar` for higher specificity. */
+
+.screen.hangar.with-bays {
+  grid-template-areas:
+    'bays bays bays'
+    'rocket slots inventory'
+    'mission mission mission';
+}
+
+/* Bay bar */
+.bays-card {
+  grid-area: bays;
+  min-width: 0;
+  padding: 12px 16px;
+}
+
+.bays-head {
+  display: flex;
+  align-items: baseline;
+  gap: 4px 14px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.bays-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.bays-head p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.bays {
+  list-style: none;
+  margin: 0;
+  padding: 3px 3px 6px;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bay {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.btn.bay-select,
+.bay-select.editing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 200px;
+  min-height: 76px;
+  padding: 8px 12px 8px 8px;
+  text-align: left;
+  border-radius: 12px;
+  background: #0a1226;
+  border: 1px solid var(--line);
+}
+
+.bay.active .btn.bay-select,
+.bay.active .bay-select.editing {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, #0c2a44, #0a1a33);
+  box-shadow: 0 0 0 1px #38bdf855;
+  cursor: default;
+}
+
+.bay.empty .bay-thumb {
+  opacity: 0.5;
+}
+
+.bay-thumb {
+  flex: none;
+  display: inline-flex;
+  width: 36px;
+  height: 58px;
+}
+
+.bay-thumb svg {
+  width: 100%;
+  height: 100%;
+}
+
+.bay-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.bay.active .bay-info {
+  padding-right: 24px;
+}
+
+.bay-name {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bay-meta {
+  color: #fde68a;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.bay.empty .bay-meta {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.bay-active {
+  align-self: flex-start;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #04121f;
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.btn.bay-edit {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0;
+  border: none;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.bay-rename {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--text);
+  background: #060b1a;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-height: 44px;
+  outline: none;
+  box-shadow: 0 0 0 2px #38bdf855;
+}
+
+.bay-select.editing {
+  width: 240px;
+}
+
+.bay-buy {
+  display: flex;
+  align-items: stretch;
+}
+
+.btn.bay-buy-btn {
+  min-height: 76px;
+  border-style: dashed;
+  border-color: #3b4f86;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.bay-full {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+/* Inventory sort / filter */
+.inv-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.inv-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.inv-sort {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.inv-sort select {
+  min-height: 40px;
+  padding: 6px 10px;
+  font-size: 0.9rem;
+}
+
+.inv-options .chip.toggle {
+  min-height: 40px;
+}
+
+.inv-options .chip.toggle input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.inv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 12px;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+}
+
+.inv-empty span {
+  font-size: 2rem;
+}
+
+.inv-empty p {
+  margin: 0;
+}
+
+/* Equip feedback (~0.5 s) */
+.preview-wrap {
+  display: inline-block;
+  transform-origin: 50% 90%;
+}
+
+.preview-wrap.fx-bounce {
+  animation: hangar-bounce 0.5s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes hangar-bounce {
+  0% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 0 0 #38bdf800);
+  }
+  25% {
+    transform: translateY(-10px) scale(1.06, 0.96);
+    filter: drop-shadow(0 0 18px #7dd3fc) brightness(1.25);
+  }
+  55% {
+    transform: translateY(2px) scale(0.98, 1.03);
+    filter: drop-shadow(0 0 10px #38bdf8aa) brightness(1.1);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 0 0 #38bdf800);
+  }
+}
+
+.ranking-big strong.fx-pop {
+  display: inline-block;
+  animation: hangar-pop 0.45s ease-out;
+}
+
+@keyframes hangar-pop {
+  35% {
+    transform: scale(1.18);
+    text-shadow: 0 0 14px #fde68a;
+  }
+}
+
+.screen.hangar .slot.fx-in {
+  animation: hangar-slot-in 0.5s ease-out;
+}
+
+.screen.hangar .slot.fx-out {
+  animation: hangar-slot-out 0.5s ease-out;
+}
+
+@keyframes hangar-slot-in {
+  0% {
+    transform: translateX(24px);
+    opacity: 0.2;
+    border-color: #7dd3fc;
+    box-shadow: 0 0 0 2px #38bdf8, 0 0 22px #38bdf8aa;
+    background: #0f3a5c;
+  }
+  40% {
+    transform: translateX(-3px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0);
+    box-shadow: 0 0 0 0 #38bdf800;
+  }
+}
+
+@keyframes hangar-slot-out {
+  0% {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 2px #f59e0b, 0 0 18px #f59e0b88;
+    background: #2a1a05;
+  }
+  30% {
+    transform: translateX(-6px);
+  }
+  60% {
+    transform: translateX(3px);
+  }
+  100% {
+    transform: translateX(0);
+    box-shadow: 0 0 0 0 #f59e0b00;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preview-wrap.fx-bounce,
+  .ranking-big strong.fx-pop,
+  .screen.hangar .slot.fx-in,
+  .screen.hangar .slot.fx-out {
+    animation-duration: 0.01s;
+  }
+}
+
+/* Responsive */
+@media (max-width: 980px) {
+  .screen.hangar.with-bays {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'bays bays'
+      'rocket slots'
+      'mission mission'
+      'inventory inventory';
+  }
+}
+
+@media (max-width: 680px) {
+  .screen.hangar.with-bays {
+    grid-template-columns: 1fr;
+    grid-template-areas: 'bays' 'mission' 'rocket' 'slots' 'inventory';
+  }
+
+  .bays-card {
+    padding: 10px;
+  }
+
+  /* Two columns on phones, so every bay and the buy button are visible without sideways scrolling. */
+  .bays {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    overflow-x: visible;
+  }
+
+  .bay-buy .btn.bay-buy-btn,
+  .btn.bay-select,
+  .bay-select.editing {
+    width: 100%;
+    min-height: 68px;
+    white-space: normal;
+  }
+
+  .bay:has(.editing) {
+    grid-column: span 2;
+  }
+
+  .bay-thumb {
+    width: 30px;
+    height: 48px;
+  }
+
+  .btn.bay-buy-btn {
+    min-height: 68px;
+  }
+
+  .inv-filters .chip {
+    min-height: 40px;
+  }
+}

@@ -11,9 +11,11 @@ import { Entrance } from './screens/Entrance';
 import { Hangar } from './screens/Hangar';
 import { LevelSelect } from './screens/LevelSelect';
 import { Missions } from './screens/Missions';
+import { Profile } from './screens/Profile';
 import { Results } from './screens/Results';
 import { Settings } from './screens/Settings';
 import { Shop } from './screens/Shop';
+import './chrome.css';
 
 // PixiJS is only needed in flight, so it loads separately from the menus.
 const Journey = lazy(() => import('./screens/Journey').then((m) => ({ default: m.Journey })));
@@ -190,9 +192,11 @@ export function App() {
     journey: <Journey />,
     results: <Results />,
     settings: <Settings />,
+    profile: <Profile />,
+    replay: <Journey replay />,
   }[screen];
 
-  const chrome = screen !== 'entrance' && screen !== 'journey';
+  const chrome = screen !== 'entrance' && screen !== 'journey' && screen !== 'replay';
   return (
     <ErrorBoundary>
       <div className={`app app-${screen}`}>

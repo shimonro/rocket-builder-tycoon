@@ -225,7 +225,11 @@ export const useGame = create<GameStore>()((set, get) => {
     },
 
     unequip(category) {
-      act(`unequip:${category}`, (s) => ({ ...s, ...unequip({ rocket: s.rocket, inventory: s.inventory }, category) }));
+      act(`unequip:${category}`, (s) => {
+        if (s.rocket[category] === undefined) return null;
+        gameEvents.emit({ type: 'equip', partId: `unequip:${category}` });
+        return { ...s, ...unequip({ rocket: s.rocket, inventory: s.inventory }, category) };
+      });
     },
 
     selectLevel(levelId) {

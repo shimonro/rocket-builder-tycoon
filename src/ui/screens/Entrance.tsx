@@ -12,7 +12,7 @@ import {
   useSession,
 } from '../../state/session';
 import { rocketLook, rocketSvg } from '../art/rocketArt';
-import { money, Svg } from '../components/common';
+import { cx, money, Svg } from '../components/common';
 
 const HERO = rocketSvg(
   rocketLook(
@@ -21,11 +21,29 @@ const HERO = rocketSvg(
   ),
 );
 
+type Mode = 'login' | 'register';
+type Problems = Partial<Record<'email' | 'password' | 'confirm', string>>;
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validate(mode: Mode, email: string, password: string, confirm: string): Problems {
+  const problems: Problems = {};
+  if (!EMAIL.test(email.trim())) problems.email = 'Enter a valid email, like pilot@example.com.';
+  if (mode === 'login' && !password) problems.password = 'Enter your password.';
+  if (mode === 'register' && password.length < 6) problems.password = 'Use at least 6 characters for your password.';
+  if (mode === 'register' && password !== confirm) problems.confirm = 'The passwords don’t match.';
+  return problems;
+}
+
 export function Entrance() {
   const { loginAvailable, user, busy, error } = useSession();
   const [guest, setGuest] = useState<SaveData | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [mode, setMode] = useState<Mode>('login');
+  /** Field problems show once the player has tried to submit, then update as they type. */
+  const [tried, setTried] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
@@ -34,9 +52,19 @@ export function Entrance() {
     if (loginAvailable) void restoreSession();
   }, [loginAvailable]);
 
-  const submit = (mode: 'signin' | 'signup') => (e?: FormEvent) => {
-    e?.preventDefault();
-    void signIn(email, password, mode);
+  const problems = tried ? validate(mode, email, password, confirm) : {};
+
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    setTried(false);
+    useSession.setState({ error: null });
+  };
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    setTried(true);
+    if (Object.keys(validate(mode, email, password, confirm)).length > 0) return;
+    void signIn(email.trim(), password, mode === 'register' ? 'signup' : 'signin');
   };
 
   const highest = guest ? Math.max(...guest.progress.unlocked) : 1;
@@ -96,31 +124,102 @@ export function Entrance() {
               )}
             </form>
           ) : (
-            <form className="login" onSubmit={submit('signin')}>
-              <input type="email" placeholder="Email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              <input
-                type="password"
-                placeholder="Password (6+ characters)"
-                autoComplete="current-password"
-                value={password}
-                minLength={6}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <div className="row">
-                <button type="submit" className="btn primary" disabled={busy}>
+            <>
+              <div className="tabs auth-tabs" role="tablist" aria-label="Account">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'login'}
+                  className={cx('tab', mode === 'login' && 'active')}
+                  onClick={() => switchMode('login')}
+                  data-testid="mode-login"
+                >
                   Log in
                 </button>
-                <button type="button" className="btn ghost" disabled={busy || !email || password.length < 6} onClick={() => submit('signup')()}>
-                  Register
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'register'}
+                  className={cx('tab', mode === 'register' && 'active')}
+                  onClick={() => switchMode('register')}
+                  data-testid="mode-register"
+                >
+                  Create account
                 </button>
               </div>
-              <button type="button" className="link small" onClick={() => setResetting(true)} data-testid="forgot-password">
-                Forgot password?
-              </button>
-            </form>
+              <form className="login" onSubmit={submit} noValidate>
+                {mode === 'register' && <p className="muted small">Save your progress online and race on the leaderboards.</p>}
+                <input
+                  type="email"
+                  placeholder="Email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={!!problems.email}
+                  aria-describedby="email-problem"
+                />
+                {problems.email && (
+                  <p className="field-error" id="email-problem" data-testid="email-error">
+                    {problems.email}
+                  </p>
+                )}
+                <input
+                  type="password"
+                  placeholder={mode === 'register' ? 'Password (6+ characters)' : 'Password'}
+                  autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  aria-invalid={!!problems.password}
+                  aria-describedby="password-problem"
+                />
+                {problems.password && (
+                  <p className="field-error" id="password-problem" data-testid="password-error">
+                    {problems.password}
+                  </p>
+                )}
+                {mode === 'register' && (
+                  <>
+                    <input
+                      type="password"
+                      placeholder="Confirm password"
+                      autoComplete="new-password"
+                      value={confirm}
+                      onChange={(e) => setConfirm(e.target.value)}
+                      aria-invalid={!!problems.confirm}
+                      aria-describedby="confirm-problem"
+                      data-testid="confirm-password"
+                    />
+                    {problems.confirm && (
+                      <p className="field-error" id="confirm-problem" data-testid="confirm-error">
+                        {problems.confirm}
+                      </p>
+                    )}
+                  </>
+                )}
+                <button type="submit" className="btn primary" disabled={busy} data-testid={mode === 'register' ? 'register-submit' : 'login-submit'}>
+                  {busy ? 'One moment…' : mode === 'register' ? 'Create account' : 'Log in'}
+                </button>
+                {mode === 'login' && (
+                  <button type="button" className="link small" onClick={() => setResetting(true)} data-testid="forgot-password">
+                    Forgot password?
+                  </button>
+                )}
+              </form>
+            </>
           )}
-          {error && <p className="warn">{error}</p>}
+          {error && (
+            <p className="warn" data-testid="auth-error">
+              {error}
+              {mode === 'register' && /already/i.test(error) && (
+                <>
+                  {' '}
+                  <button type="button" className="link" onClick={() => switchMode('login')}>
+                    Log in instead
+                  </button>
+                </>
+              )}
+            </p>
+          )}
         </section>
       </div>
     </div>
