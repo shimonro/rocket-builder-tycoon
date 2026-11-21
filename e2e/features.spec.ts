@@ -126,7 +126,13 @@ test('the flight HUD shows level progress and gems, and triple-tapping ↑ locks
   await page.getByTestId('launch').click();
   await expect(page.getByTestId('hud-percent')).toHaveText(/\d+%/);
   await expect(page.getByTestId('hud-gems')).toContainText('💎');
-  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowUp');
+  // Three taps inside the 0.6 s window, sent in one go so slow CI round-trips do not stretch them apart.
+  await page.evaluate(() => {
+    for (let i = 0; i < 3; i++) {
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp', key: 'ArrowUp' }));
+      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'ArrowUp', key: 'ArrowUp' }));
+    }
+  });
   const fast = page.getByTestId('fast-mode');
   await expect(fast).toBeVisible();
   // It stays on with no key held, until ↓ is tapped once.
