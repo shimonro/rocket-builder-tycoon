@@ -1,7 +1,8 @@
 name: Keep Supabase awake
 
-# Free Supabase projects pause after a quiet week. This pings the keepalive() database function
-# every 6 hours, alongside the daily Vercel cron in vercel.json. GitHub emails the repo owner if it fails.
+# Free Supabase projects pause after a quiet week. This pings the keepalive() database function of
+# both projects every 6 hours (production also gets the daily Vercel cron in vercel.json).
+# GitHub emails the repo owner if a ping fails.
 on:
   schedule:
     - cron: '23 */6 * * *'
@@ -13,12 +14,20 @@ permissions:
 jobs:
   ping:
     runs-on: ubuntu-latest
-    env:
-      # Public values: the same URL and publishable key ship in the game's JavaScript.
-      SUPABASE_URL: https://mauusienlfbrzwnbvzru.supabase.co
-      SUPABASE_PUBLISHABLE_KEY: sb_publishable_j39aphLyJaL_m8vzWoe_lA_WSUo1bAT
+    strategy:
+      fail-fast: false
+      matrix:
+        # Public values: each URL and publishable key ships in that environment's JavaScript.
+        include:
+          - env: production
+            url: https://mauusienlfbrzwnbvzru.supabase.co
+            key: sb_publishable_j39aphLyJaL_m8vzWoe_lA_WSUo1bAT
+          - env: qa
+            url: https://xcjjnkzrnmsljixwfhtz.supabase.co
+            key: sb_publishable_nwccr-G4cJCB8-s2lfjb3g_sH7n_im1
+    name: ping ${{ matrix.env }}
     steps:
       - name: Write and read the database
         run: |
-          curl -fsS --retry 3 --retry-delay 20 -X POST "$SUPABASE_URL/rest/v1/rpc/keepalive" \
-            -H "apikey: $SUPABASE_PUBLISHABLE_KEY" -H "Content-Type: application/json" -d '{}'
+          curl -fsS --retry 3 --retry-delay 20 -X POST "${{ matrix.url }}/rest/v1/rpc/keepalive" \
+            -H "apikey: ${{ matrix.key }}" -H "Content-Type: application/json" -d '{}'
