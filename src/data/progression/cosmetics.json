@@ -8,5 +8,17 @@
   { "id": "flame_ice", "type": "flame", "name": "Ice Flame", "price": 30, "color": "#67e8f9" },
   { "id": "trail_rainbow", "type": "trail", "name": "Rainbow Trail", "price": 50, "color": "rainbow" },
   { "id": "trail_stardust", "type": "trail", "name": "Stardust Trail", "price": 30, "color": "#fde68a" },
-  { "id": "trail_pink", "type": "trail", "name": "Bubblegum Trail", "price": 25, "color": "#f472b6" }
+  { "id": "trail_pink", "type": "trail", "name": "Bubblegum Trail", "price": 25, "color": "#f472b6" },
+  { "id": "decal_flag_il", "type": "decal", "name": "Israel Flag", "price": 10, "color": "#0038b8" },
+  { "id": "decal_flag_hu", "type": "decal", "name": "Hungary Flag", "price": 10, "color": "#477050" },
+  { "id": "decal_flag_us", "type": "decal", "name": "USA Flag", "price": 10, "color": "#b22234" },
+  { "id": "decal_flag_uk", "type": "decal", "name": "UK Flag", "price": 10, "color": "#012169" },
+  { "id": "decal_flag_de", "type": "decal", "name": "Germany Flag", "price": 10, "color": "#dd0000" },
+  { "id": "decal_flag_fr", "type": "decal", "name": "France Flag", "price": 10, "color": "#0055a4" },
+  { "id": "decal_flag_jp", "type": "decal", "name": "Japan Flag", "price": 10, "color": "#bc002d" },
+  { "id": "decal_logo_bolt", "type": "decal", "name": "Lightning Bolt", "price": 15, "color": "#facc15" },
+  { "id": "decal_logo_star", "type": "decal", "name": "Star Badge", "price": 15, "color": "#fbbf24" },
+  { "id": "decal_logo_skull", "type": "decal", "name": "Space Pirate", "price": 25, "color": "#e5e7eb" },
+  { "id": "decal_logo_heart", "type": "decal", "name": "Heart", "price": 15, "color": "#f43f5e" },
+  { "id": "decal_logo_atom", "type": "decal", "name": "Atom", "price": 20, "color": "#38bdf8" }
 ]

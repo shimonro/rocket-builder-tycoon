@@ -9,8 +9,8 @@ export const RARITY_COLORS: Record<Rarity, string> = {
   legendary: '#fbbf24',
 };
 
-/** Accent color per equipped slot, plus an optional cosmetic hull paint. */
-export type RocketLook = Partial<Record<Category, string>> & { paint?: string };
+/** Accent color per equipped slot, plus optional cosmetics: hull paint color and a decal (cosmetic id). */
+export type RocketLook = Partial<Record<Category, string>> & { paint?: string; decal?: string };
 
 export function rocketLook(rocket: Rocket, catalog: Catalog): RocketLook {
   const look: RocketLook = {};

@@ -15,6 +15,7 @@ import {
   type JourneyState,
 } from './journey';
 import { appendInput, decodeInput, encodeInput, isValidLog, replayJourney } from './replay';
+import { NO_LOCK, nextIntro, tapBackward, tapForward, TAP_WINDOW } from './assist';
 import { generateChunk, type JourneyLevel, type Obstacle } from './spawner';
 
 const cfg: JourneyConfig = journeyJson;
@@ -373,10 +374,15 @@ describe('generateChunk: variety', () => {
     });
   });
 
-  it('lays coin trails and the odd fuel can', () => {
+  it('lays coin trails, the odd fuel can and rare gems (none when the sky density is zero)', () => {
     const pickups = chunks(base).flatMap((c) => c.pickups);
     const coins = pickups.filter((p) => p.kind === 'coin');
     const cans = pickups.filter((p) => p.kind === 'fuel');
+    const gems = pickups.filter((p) => p.kind === 'gem');
+    expect(gems.length).toBeGreaterThan(0);
+    expect(gems.length).toBeLessThan(cans.length);
+    const sparse = Array.from({ length: 60 }, (_, i) => generateChunk(i, base, { ...cfg, gem: { ...cfg.gem, chance: 0.05 } }, 3, 0, 1));
+    expect(sparse.flatMap((c) => c.pickups).some((p) => p.kind === 'gem')).toBe(false);
     expect(coins.length % cfg.coins.rowSize).toBe(0);
     expect(coins.length / cfg.coins.rowSize).toBeGreaterThan(60 * cfg.coins.rowsPer100m * 0.6);
     expect(cans.length).toBeGreaterThan(2);
@@ -425,6 +431,22 @@ describe('stepJourney: variety', () => {
     expect(state.pickups.map((p) => p.id)).not.toContain(1001);
     expect(state.pickups.map((p) => p.id)).toContain(1003);
     expect(events.map((e) => e.type)).toEqual(['coin', 'fuelCan']);
+  });
+
+  it('catches gems within reach and leaves ones just out of reach', () => {
+    const ctx = context();
+    const reach = cfg.rocketRadius + cfg.gem.radius;
+    const s = {
+      ...createJourney(ctx),
+      pickups: [
+        { id: 9001, kind: 'gem' as const, x: 25 + reach - 0.05, y: 0 },
+        { id: 9002, kind: 'gem' as const, x: 25 - reach - 0.05, y: 0 },
+      ],
+    };
+    const { state, events } = stepJourney(s, NO_INPUT, 1 / 60, ctx);
+    expect(state.gems).toBe(1);
+    expect(state.pickups.filter((p) => p.id > 9000).map((p) => p.id)).toEqual([9002]);
+    expect(events).toContainEqual({ type: 'gem', x: s.pickups[0].x, y: 0 });
   });
 
   it('never overfills the tank and drops pickups left far behind', () => {
@@ -498,5 +520,46 @@ describe('replay', () => {
     // A log that stops early without an abort leaves the flight running.
     expect(replayJourney(ctx, log.slice(0, 2), false).status).not.toBe('ended');
     expect(replayJourney(ctx, log.slice(0, 2), true)).toMatchObject({ status: 'ended', endReason: 'aborted' });
+  });
+});
+
+describe('flight assists', () => {
+  it('locks forward after three quick taps and unlocks on one backward tap', () => {
+    let lock = tapForward(NO_LOCK, 10);
+    lock = tapForward(lock, 10.2);
+    expect(lock.on).toBe(false);
+    lock = tapForward(lock, 10 + TAP_WINDOW - 0.1);
+    expect(lock).toEqual({ on: true, taps: [] });
+    expect(tapForward(lock, 11)).toBe(lock);
+    expect(tapBackward()).toEqual({ on: false, taps: [] });
+  });
+
+  it('does not lock when the taps are spread out', () => {
+    let lock = tapForward(NO_LOCK, 0);
+    lock = tapForward(lock, 0.5);
+    // The first tap is now older than the window, so this is only the second tap in it.
+    lock = tapForward(lock, TAP_WINDOW + 0.1);
+    expect(lock.on).toBe(false);
+    expect(lock.taps).toEqual([0.5, TAP_WINDOW + 0.1]);
+  });
+
+  it('introduces the nearest new kind of thing ahead, once per kind', () => {
+    const ctx = context();
+    const s: JourneyState = {
+      ...createJourney(ctx),
+      y: 100,
+      hoops: [
+        { id: 1, x: 10, y: 140, crossed: false, collected: false },
+        { id: 2, x: 12, y: 105, crossed: true, collected: false },
+      ],
+      obstacles: [obstacle({ y: 120 }), obstacle({ id: 5, y: 95 })],
+      pickups: [{ id: 3, kind: 'coin', x: 30, y: 130 }, { id: 4, kind: 'gem', x: 30, y: 300 }],
+    };
+    expect(nextIntro(s, [], 60)).toEqual({ kind: 'obstacle', name: 'asteroid', x: 25, y: 120 });
+    expect(nextIntro(s, ['obstacle'], 60)).toMatchObject({ kind: 'coin', y: 130 });
+    expect(nextIntro(s, ['obstacle', 'coin'], 60)).toMatchObject({ kind: 'hoop', y: 140 });
+    // The gem is beyond range and the crossed hoop does not count.
+    expect(nextIntro(s, ['obstacle', 'coin', 'hoop'], 60)).toBeNull();
+    expect(nextIntro(s, ['obstacle', 'coin', 'hoop'], 250)).toMatchObject({ kind: 'gem' });
   });
 });

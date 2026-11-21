@@ -38,6 +38,8 @@ export interface JourneyConfig {
   coins: { rowsPer100m: number; rowSize: number; spacing: number; radius: number };
   /** Refill is a share of the tank's capacity. */
   fuelCan: { chance: number; refill: number; radius: number };
+  /** Rare floating gems: each one caught adds a 💎 to the player's wallet. */
+  gem: { chance: number; radius: number };
   /** Wind bands push the rocket sideways by `force` m/s while it is inside them. */
   wind: { fromLevel: number; chance: number; force: number[]; height: number[] };
   meteorShower: { fromLevel: number; chance: number; count: number; speed: number[] };

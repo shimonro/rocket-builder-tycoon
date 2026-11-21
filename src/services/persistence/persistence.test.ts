@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import { createGuestBackend, decideMigration, decideSync, GUEST_SAVE_KEY, SaveConflictError } from './backend';
 import { createGhostStore, ghostPosition, GHOST_INTERVAL } from './ghosts';
-import { defaultSave, hasProgress, parseSave, type SaveData } from './save';
+import { defaultSave, enterGodMode, exitGodMode, GOD_CASH, GOD_GEMS, hasProgress, parseSave, type SaveData } from './save';
 import { createAuth, createCloudBackend, createLeaderboard, createSupabaseFromEnv } from './supabase';
 
 const fresh = defaultSave(600);
@@ -25,7 +25,13 @@ describe('parseSave', () => {
 
   it.each([
     ['null', null],
-    ['wrong version', { ...fresh, version: 3 }],
+    ['wrong version', { ...fresh, version: 4 }],
+    ['empty fleet', { ...fresh, fleet: [] }],
+    ['bad bay rocket', { ...fresh, fleet: [{ name: 'A', parts: { engine: 1 } }] }],
+    ['unnamed bay', { ...fresh, fleet: [{ parts: {} }] }],
+    ['active bay out of range', { ...fresh, activeRocket: 1 }],
+    ['invalid god backup', { ...fresh, godBackup: { version: 3 } }],
+    ['nested god backup', { ...fresh, godBackup: { ...fresh, godBackup: fresh } }],
     ['fractional gems', { ...fresh, gems: 1.5 }],
     ['bad upgrades', { ...fresh, upgrades: { a: -1 } }],
     ['bad music level', { ...fresh, settings: { ...fresh.settings, music: 'loud' } }],
@@ -83,11 +89,37 @@ describe('parseSave', () => {
       updatedAt: 5,
     };
     const save = parseSave(v1)!;
-    expect(save).toMatchObject({ version: 2, cash: 1234, gems: 0, upgrades: {}, achievements: [], missions: null, tips: [] });
+    expect(save).toMatchObject({ version: 3, cash: 1234, gems: 0, upgrades: {}, achievements: [], missions: null, tips: [] });
+    expect(save).toMatchObject({ fleet: [{ name: 'Rocket 1', parts: { engine: 'e' } }], activeRocket: 0, godBackup: null });
     expect(save.settings).toEqual({ ...fresh.settings, volume: 0.3, muted: true, touchControls: 'on' });
     expect(save.stats).toEqual({ ...fresh.stats, flights: 7, totalEarned: 9000 });
     expect(parseSave({ ...v1, stats: 'x' })).toBeNull();
     expect(parseSave({ ...v1, settings: undefined })?.settings).toEqual(fresh.settings);
+  });
+
+  it('upgrades version 2 saves into one hangar bay holding their rocket', () => {
+    const { fleet: _fleet, activeRocket: _active, godBackup: _god, ...v2 } = { ...played, version: 2, rocket: { engine: 'e' } };
+    const stats = { ...played.stats } as Partial<SaveData['stats']>;
+    delete stats.gemsFound;
+    const save = parseSave(JSON.parse(JSON.stringify({ ...v2, stats })))!;
+    expect(save).toMatchObject({ version: 3, rocket: { engine: 'e' }, fleet: [{ name: 'Rocket 1', parts: { engine: 'e' } }], activeRocket: 0, godBackup: null });
+    expect(save.stats).toEqual({ ...played.stats, gemsFound: 0 });
+    expect(parseSave({ ...v2, rocket: 'broken' })).toBeNull();
+    expect(parseSave({ ...v2, stats: 'x' })).toBeNull();
+  });
+
+  it('god mode grants endless cash and gems with all levels, and switching off restores the save', () => {
+    const before: SaveData = { ...played, gems: 12, progress: { unlocked: [1, 2], completed: [1], best: { '1': 900 } } };
+    const god = enterGodMode(before, [1, 2, 3, 4]);
+    expect(god).toMatchObject({ cash: GOD_CASH, gems: GOD_GEMS, tutorialStep: 'done', progress: { unlocked: [1, 2, 3, 4], completed: [1], best: { '1': 900 } } });
+    expect(god.godBackup).toBe(before);
+    expect(enterGodMode(god, [1])).toBe(god);
+    expect(parseSave(JSON.parse(JSON.stringify(god)))).toEqual(god);
+
+    // Spending and settings changes in god mode: the spending is undone, the settings stay.
+    const spent = { ...god, cash: 5, settings: { ...god.settings, muted: true }, updatedAt: 99 };
+    expect(exitGodMode(spent)).toEqual({ ...before, settings: spent.settings, updatedAt: 99 });
+    expect(exitGodMode(before)).toBe(before);
   });
 
   it('knows whether a save holds progress', () => {

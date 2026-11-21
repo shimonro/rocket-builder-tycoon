@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createEventBus } from './events';
-import { effectiveStat, parseCatalog, parsePrebuilts, type Part } from './parts/parts';
+import { effectiveStat, isSpecialist, parseCatalog, parsePrebuilts, type Part } from './parts/parts';
 import { createRng, mixSeed } from './rng';
 import { isLaunchable, missingSlots, ranking, rocketParts, rocketStats } from './rocket/rocket';
 import catalogJson from '../data/parts/catalog.json';
@@ -17,6 +17,15 @@ describe('parts', () => {
     expect(effectiveStat(part, 'shield')).toBe(0);
     expect(part.mass).toBe(4);
     expect(part.prebuiltOnly).toBe(false);
+  });
+
+  it('keeps specialist penalties as listed while rarity and upgrades grow their strengths', () => {
+    const catalog = parseCatalog([{ ...base, id: 's', rarity: 'epic', thrust: 10, fuelEfficiency: -25 }, { ...base, id: 'n', thrust: 5 }]);
+    const part = catalog.get('s') as Part;
+    expect(effectiveStat(part, 'thrust', 2)).toBeCloseTo(10 * 2.1 * 1.2);
+    expect(effectiveStat(part, 'fuelEfficiency', 2)).toBe(-25);
+    expect(isSpecialist(part)).toBe(true);
+    expect(isSpecialist(catalog.get('n') as Part)).toBe(false);
   });
 
   it.each([

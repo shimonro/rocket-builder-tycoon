@@ -63,3 +63,48 @@ export function equipAll(hangar: Hangar, partIds: readonly string[], catalog: Ca
   }
   return { ok: true, hangar: current };
 }
+
+/** One hangar bay and the rocket stored in it ({} when the bay is empty). */
+export interface BayRocket {
+  name: string;
+  parts: Rocket;
+}
+
+/**
+ * The player's fleet. `rocket` is the rocket in use, the source of truth for the active bay;
+ * `fleet[active].parts` is refreshed whenever the player switches away from it.
+ */
+export interface Garage {
+  rocket: Rocket;
+  fleet: BayRocket[];
+  active: number;
+}
+
+/** Price of the next hangar bay, or null once every bay is built. The first bay is free. */
+export function bayPrice(bays: number, prices: readonly number[]): number | null {
+  return prices[bays - 1] ?? null;
+}
+
+export function addBay(garage: Garage, name: string): Garage {
+  return { ...garage, fleet: [...garage.fleet, { name, parts: {} }] };
+}
+
+/** Parks the active rocket in its bay and takes out the one in bay `index`. */
+export function switchRocket(garage: Garage, index: number): Garage {
+  if (index === garage.active || !garage.fleet[index]) return garage;
+  const fleet = garage.fleet.map((bay, i) => (i === garage.active ? { ...bay, parts: garage.rocket } : bay));
+  return { rocket: fleet[index].parts, fleet, active: index };
+}
+
+/** A bay with no rocket in it: the active bay if its rocket is stripped, else the first empty one. */
+export function emptyBay(garage: Garage): number | null {
+  if (Object.keys(garage.rocket).length === 0) return garage.active;
+  const index = garage.fleet.findIndex((bay, i) => i !== garage.active && Object.keys(bay.parts).length === 0);
+  return index < 0 ? null : index;
+}
+
+export function renameRocket(garage: Garage, index: number, name: string): Garage {
+  const clean = name.trim().slice(0, 20);
+  if (!clean || !garage.fleet[index]) return garage;
+  return { ...garage, fleet: garage.fleet.map((bay, i) => (i === index ? { ...bay, name: clean } : bay)) };
+}

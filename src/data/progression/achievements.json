@@ -14,5 +14,6 @@
   { "id": "complete_10", "name": "Deep Spacer", "description": "Complete all 10 levels.", "metric": "levelsCompleted", "threshold": 10, "gems": 100 },
   { "id": "best_5k", "name": "High Flyer", "description": "Reach 5,000 m in one flight.", "metric": "bestDistance", "threshold": 5000, "gems": 20 },
   { "id": "upgrader", "name": "Tinkerer", "description": "Buy 5 part upgrades.", "metric": "upgrades", "threshold": 5, "gems": 10 },
+  { "id": "gem_hunter", "name": "Gem Hunter", "description": "Catch 5 gems in flight.", "metric": "gemsFound", "threshold": 5, "gems": 10 },
   { "id": "stylist", "name": "Stylist", "description": "Own 3 cosmetics.", "metric": "cosmetics", "threshold": 3, "gems": 10 }
 ]

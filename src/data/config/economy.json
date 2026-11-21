@@ -11,5 +11,6 @@
   "sellBackFactor": 0.5,
   "upgradeCostFactor": 0.5,
   "coinValue": 10,
-  "shieldsAndWeaponsFromLevel": 2
+  "shieldsAndWeaponsFromLevel": 2,
+  "bayPrices": [2500, 12000, 45000]
 }

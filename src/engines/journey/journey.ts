@@ -54,6 +54,7 @@ export interface JourneyState {
   obstaclesDestroyed: number;
   coins: number;
   fuelCans: number;
+  gems: number;
   guardianDefeated: boolean;
 }
 
@@ -65,6 +66,7 @@ export type JourneyEvent =
   | { type: 'obstacleDestroyed'; x: number; y: number; kind: string }
   | { type: 'coin'; x: number; y: number }
   | { type: 'fuelCan'; x: number; y: number }
+  | { type: 'gem'; x: number; y: number }
   | { type: 'meteorShower' }
   | { type: 'guardianDefeated'; x: number; y: number }
   | { type: 'fuelEmpty' }
@@ -118,6 +120,7 @@ export function createJourney(ctx: JourneyContext): JourneyState {
     obstaclesDestroyed: 0,
     coins: 0,
     fuelCans: 0,
+    gems: 0,
     guardianDefeated: false,
   };
 }
@@ -292,14 +295,17 @@ export function stepJourney(
       return { ...h, crossed: true, collected };
     });
 
-  // Pickups: coins pay out after the flight, fuel cans refill part of the tank.
-  const reach = cfg.rocketRadius + cfg.coins.radius;
+  // Pickups: coins pay out after the flight, gems go to the wallet, fuel cans refill part of the tank.
+  const radius = { coin: cfg.coins.radius, fuel: cfg.fuelCan.radius, gem: cfg.gem.radius };
   pickups = pickups.filter((p) => {
     if (p.y < floor) return false;
-    if (Math.hypot(p.x - s.x, p.y - s.y) >= (p.kind === 'coin' ? reach : cfg.rocketRadius + cfg.fuelCan.radius)) return true;
+    if (Math.hypot(p.x - s.x, p.y - s.y) >= cfg.rocketRadius + radius[p.kind]) return true;
     if (p.kind === 'coin') {
       s.coins += 1;
       events.push({ type: 'coin', x: p.x, y: p.y });
+    } else if (p.kind === 'gem') {
+      s.gems += 1;
+      events.push({ type: 'gem', x: p.x, y: p.y });
     } else {
       s.fuelCans += 1;
       s.fuel = Math.min(stats.fuelCapacity, s.fuel + stats.fuelCapacity * cfg.fuelCan.refill);

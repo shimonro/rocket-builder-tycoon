@@ -122,3 +122,21 @@ export function listParts(catalog: Catalog, categories: readonly Category[], fil
         RARITIES.indexOf(a.rarity) - RARITIES.indexOf(b.rarity),
     );
 }
+
+export type PartSort = 'default' | 'price_asc' | 'price_desc' | 'ranking' | 'rarity';
+
+/** Re-orders a part list; `rankingGain` is how much each part would add to the current rocket's ranking. */
+export function sortParts(parts: readonly Part[], by: PartSort, rankingGain: (part: Part) => number): Part[] {
+  const list = [...parts];
+  if (by === 'price_asc') return list.sort((a, b) => a.price - b.price);
+  if (by === 'price_desc') return list.sort((a, b) => b.price - a.price);
+  if (by === 'ranking') return list.sort((a, b) => rankingGain(b) - rankingGain(a));
+  if (by === 'rarity') return list.sort((a, b) => RARITIES.indexOf(b.rarity) - RARITIES.indexOf(a.rarity));
+  return list;
+}
+
+/** First game level whose shop sells parts of this rarity, or null when none are sold. */
+export function rarityFromLevel(catalog: Catalog, rarity: Rarity): number | null {
+  const levels = [...catalog.values()].filter((p) => !p.prebuiltOnly && p.rarity === rarity).map((p) => p.level * 2 - 1);
+  return levels.length ? Math.min(...levels) : null;
+}

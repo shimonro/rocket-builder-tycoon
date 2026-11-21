@@ -14,6 +14,8 @@ export interface EconomyConfig {
   /** Each collected coin pays coinValue × the level's payout multiplier, outside the soft cap. */
   coinValue: number;
   shieldsAndWeaponsFromLevel: number;
+  /** Price of the 2nd, 3rd, … hangar bay. */
+  bayPrices: number[];
 }
 
 /** Distance weighted by diminishing returns: full value up to the target, then the configured rates. */

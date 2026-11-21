@@ -265,6 +265,8 @@ useGame.subscribe((state, prev) => {
   if (result.track && distance > result.previousBest) ghosts.offer(result.levelId, { distance, points: result.track });
 
   const { user } = useSession.getState();
+  // God-mode (QA) runs never go on the leaderboards.
+  if (state.save.godBackup) return;
   if (!user || !result.replay || distance <= (serverBest[result.levelId] ?? result.previousBest - 1) || distance === 0) return;
   const { levelId } = result;
   useSession.setState({ leaderboard: { levelId, state: 'submitting' } });

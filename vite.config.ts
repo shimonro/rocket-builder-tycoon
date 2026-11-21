@@ -2,6 +2,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import pkg from './package.json' with { type: 'json' };
+
+// Vercel builds `main` as production and every other branch (`dev` → QA) as a preview.
+const vercelEnv = process.env.VERCEL_ENV;
+const appEnv = vercelEnv === 'production' ? 'prod' : vercelEnv === 'preview' ? 'qa' : 'dev';
+const commit = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'local';
 
 export default defineConfig({
   plugins: [
@@ -31,7 +37,10 @@ export default defineConfig({
       },
     }),
   ],
-  define: { __APP_VERSION__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'dev') },
+  define: {
+    __APP_VERSION__: JSON.stringify(`${pkg.version}+${commit}`),
+    __APP_ENV__: JSON.stringify(appEnv),
+  },
   server: { host: true, allowedHosts: true },
   preview: { host: true, allowedHosts: true },
   test: {

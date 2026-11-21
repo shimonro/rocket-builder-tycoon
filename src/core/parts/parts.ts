@@ -49,8 +49,15 @@ export type Catalog = ReadonlyMap<string, Part>;
 export const MAX_UPGRADE = 3;
 export const UPGRADE_STEP = 0.1;
 
+/** Penalties (negative stats on specialist parts) stay as listed: rarity and upgrades only grow strengths. */
 export function effectiveStat(part: Part, key: StatKey, upgrade = 0): number {
+  if (part[key] < 0) return part[key];
   return part[key] * RARITY_MULTIPLIER[part.rarity] * (1 + UPGRADE_STEP * Math.min(MAX_UPGRADE, Math.max(0, upgrade)));
+}
+
+/** Specialist parts trade one strength for a penalty somewhere else. */
+export function isSpecialist(part: Part): boolean {
+  return STAT_KEYS.some((k) => part[k] < 0);
 }
 
 function fail(message: string): never {
